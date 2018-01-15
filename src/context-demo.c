@@ -11,6 +11,10 @@ void TimerInt(void) {}
 
 int main(void) {
 
+int a = 1;
+int b = 2;
+int c = a + b;
+c += c;
   Running = &taskA;
   Running->PC = task1;
   Running->SP = &(Running->StackSeg[STACK_SIZE - 1]);
@@ -22,11 +26,11 @@ void task1(void) {
   register int reg_var = 1;
   volatile int vol_var = 1;
 
-  SaveContext();
+  SaveContext(); // reg_var = 1 vol_var = 1;
   reg_var++;
   vol_var++;
 
-  SaveContext();
+  SaveContext(); // reg_var = 2 vol_var = 2;
   reg_var++;
   vol_var++;
 

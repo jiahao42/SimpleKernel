@@ -5,9 +5,9 @@ OBJ = obj
 KERNEL_MODULES = context context-demo
 KERNEL_OBJS = $(KERNEL_MODULES:%=$(OBJ)/%.o)
 
-main.elf:
-	$(CC) --specs=nosys.specs -o main.elf $(KERNEL_OBJS) -g -mcpu=cortex-m3 -mthumb
+main.elf: $(KERNEL_OBJS)
+	$(CC) --specs=nosys.specs -o main.elf $(KERNEL_OBJS) -g3 -mcpu=cortex-m3 -mthumb
 
 $(OBJ)/%.o: $(SRC)/%.c
 	@test -d $(OBJ) || mkdir $(OBJ)
-	$(CC) $(CFLAGS) -c -o $@ $<
+	$(CC) $(CFLAGS) -c -g3 -o $@ $<
