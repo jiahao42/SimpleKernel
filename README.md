@@ -19,36 +19,39 @@ brew install qemu
 
 ```plaintext
 James:~/LambKernel ► make
-James:~/LambKernel ► qemu-system-arm -machine realview-pb-a8 -cpu cortex-a8 -nographic -monitor null -serial null -semihosting -kernel main.elf -gdb tcp::51234 -S
+James:~/LambKernel ► make qemu-gdb
 ```
 
 **Using gdb to attach process in another terminal:**  
 
 ```plaintext
-James:~/LambKernel ► arm-none-eabi-gdb main.elf  
-(gdb) target remote localhost:51234
-Remote debugging using localhost:51234
-0x000080b0 in _start ()
-(gdb) load
-Loading section .init, size 0xc lma 0x8000
-Loading section .text, size 0x524 lma 0x800c
-Loading section .fini, size 0xc lma 0x8530
-Loading section .rodata, size 0x8 lma 0x853c
-Loading section .ARM.exidx, size 0x8 lma 0x8544
-Loading section .eh_frame, size 0x4 lma 0x854c
-Loading section .init_array, size 0x8 lma 0x10550
-Loading section .fini_array, size 0x4 lma 0x10558
-Loading section .jcr, size 0x4 lma 0x1055c
-Loading section .data, size 0x434 lma 0x10560
-Start address 0x80b0, load size 2452
-Transfer rate: 2394 KB/sec, 245 bytes/write.
-(gdb) b main 
+James:~/LambKernel ► arm-none-eabi-gdb                                         (master✱) 
+GNU gdb (GNU Tools for ARM Embedded Processors) 7.8.0.20150604-cvs
+Copyright (C) 2014 Free Software Foundation, Inc.
+License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.  Type "show copying"
+and "show warranty" for details.
+This GDB was configured as "--host=x86_64-apple-darwin10 --target=arm-none-eabi".
+Type "show configuration" for configuration details.
+For bug reporting instructions, please see:
+<http://www.gnu.org/software/gdb/bugs/>.
+Find the GDB manual and other documentation resources online at:
+<http://www.gnu.org/software/gdb/documentation/>.
+For help, type "help".
+Type "apropos word" to search for commands related to "word".
+/Users/james/.gdbinit:1: Error in sourced command file:
+No symbol table is loaded.  Use the "file" command.
++ target remote localhost:25501
+0x000080b0 in ?? ()
+(gdb) b main
 Breakpoint 1 at 0x81f8: file src/context-demo.c, line 15.
 (gdb) c
 Continuing.
 
 Breakpoint 1, main () at src/context-demo.c:15
 15	  Running = &taskA;
+(gdb) 
 ```
 
 ## References  

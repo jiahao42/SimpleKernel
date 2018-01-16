@@ -31,6 +31,7 @@ void task1(void) {
   SaveContext(); // reg_var = 2 vol_var = 2;
   reg_var++;
   vol_var++;
+  int dummy = reg_var + vol_var;
 
   LoadContext();
 }
