@@ -11,10 +11,7 @@ void TimerInt(void) {}
 
 int main(void) {
 
-int a = 1;
-int b = 2;
-int c = a + b;
-c += c;
+
   Running = &taskA;
   Running->PC = task1;
   Running->SP = &(Running->StackSeg[STACK_SIZE - 1]);

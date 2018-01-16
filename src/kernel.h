@@ -47,21 +47,23 @@ struct l_obj; // Forward declaration
 
 // Task Control Block, TCB
 #ifdef texas_dsp
-typedef struct {
-  void (*PC)();
-  uint *SP;
-  uint Context[CONTEXT_SIZE];
-  uint StackSeg[STACK_SIZE];
-  uint DeadLine;
+typedef struct
+{
+	void	(*PC)();
+	uint	*SP;
+	uint	Context[CONTEXT_SIZE];
+	uint	StackSeg[STACK_SIZE];
+	uint	DeadLine;
 } TCB;
 #else
-typedef struct {
-  uint SPSR;
-  void (*PC)();
-  uint *SP;
-  uint Context[CONTEXT_SIZE];
-  uint StackSeg[STACK_SIZE];
-  uint DeadLine;
+typedef struct
+{
+  uint    Context[CONTEXT_SIZE];   // 4 * 13 = 52     
+  uint    *SP; // 4
+  void    (*PC)(); // 4
+  uint    SPSR;     
+  uint    StackSeg[STACK_SIZE];
+  uint    DeadLine;
 } TCB;
 #endif
 
