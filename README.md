@@ -15,7 +15,7 @@ brew install gcc-arm-none-eabi-49
 brew install qemu
 ```
 
-### How to run and debug
+## How to run and debug
 
 ```plaintext
 James:~/LambKernel ► make
@@ -51,5 +51,6 @@ Breakpoint 1, main () at src/context-demo.c:15
 15	  Running = &taskA;
 ```
 
-[Reference for installing GCC for ARM](https://gist.github.com/joegoggins/7763637)
-[Reference for simulation with QEMU on macOS](http://cgi.cs.indiana.edu/~geobrown/stm32/Main/Simulation)
+## References  
+[Install GCC for ARM](https://gist.github.com/joegoggins/7763637)  
+[Simulation with QEMU on macOS](http://cgi.cs.indiana.edu/~geobrown/stm32/Main/Simulation)
