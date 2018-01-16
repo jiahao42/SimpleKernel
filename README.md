@@ -19,7 +19,7 @@ brew install qemu
 
 ```plaintext
 James:~/LambKernel ► make
-James:~/LambKernel ► qemu-system-arm -machine virt-2.9 -nographic -monitor null -serial null -semihosting -kernel main.elf -gdb tcp::51234 -S  
+James:~/LambKernel ► qemu-system-arm -machine realview-pb-a8 -cpu cortex-a8 -nographic -monitor null -serial null -semihosting -kernel main.elf -gdb tcp::51234 -S
 ```
 
 **Using gdb to attach process in another terminal:**  
