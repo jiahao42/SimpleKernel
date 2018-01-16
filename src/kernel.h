@@ -60,7 +60,7 @@ typedef struct
   uint    Context[CONTEXT_SIZE];   // 4 * 13 = 52, 0 - 51   
   uint    *SP; // 4, 52 - 55
   void    (*PC)(); // 4, 56 - 59
-  uint    SPSR; // 4
+  uint    SPSR; // 4, 60 - 63
   uint    StackSeg[STACK_SIZE]; // 4 * 100 = 400
   uint    DeadLine; // 4
 } TCB;

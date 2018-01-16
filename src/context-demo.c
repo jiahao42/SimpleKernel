@@ -19,12 +19,15 @@ int main() {
 
   TCB taskA;
   taskA.PC = &task1;
+  taskA.SP = &taskA.StackSeg[STACK_SIZE - 1];
 
   TCB taskB;
   taskB.PC = &task2;
+  taskB.SP = &taskB.StackSeg[STACK_SIZE - 1];
 
   TCB taskC;
   taskC.PC = &task3;
+  taskC.SP = &taskC.StackSeg[STACK_SIZE - 1];
 
   tcb_append(tcb_chain, create_tcb_node(&taskA));
   tcb_append(tcb_chain, create_tcb_node(&taskB));
@@ -36,7 +39,6 @@ int main() {
   while (i++ < 10) {
     int r = rand() % 3;
     Running = tcb_get_data(tcb_chain, r);
-    // Running->SP = &(Running->StackSeg[STACK_SIZE - 1]);
     LoadContext();
   }
   tcb_destroy_chain(tcb_chain);
