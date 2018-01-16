@@ -17,6 +17,7 @@ int main(void) {
   Running->SP = &(Running->StackSeg[STACK_SIZE - 1]);
 
   LoadContext();
+  return 0;
 }
 
 void task1(void) {
