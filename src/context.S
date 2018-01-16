@@ -1,9 +1,8 @@
-
-	.globl   SaveContext
-    .globl   LoadContext
-     .p2align 2
-	.type    SaveContext,%function
-    .type    LoadContext,%function
+.globl   SaveContext
+.globl   LoadContext
+.p2align 2
+.type    SaveContext,%function
+.type    LoadContext,%function
     
 // SP is the stack register a shortcut for typing r13. 
 // LR is the link register a shortcut for r14. 
@@ -12,13 +11,15 @@
 //  void SaveContext(void)
 //***************************************************************************
 SaveContext:      
-//    stmdb SP!,{r0,r1,LR}
-    // The ! means "Register write-back": 
-    // the base register is used to calculate the address of the transfer, and is updated.
-    // kind of like ! in Ruby
+    //    stmdb SP!,{r0,r1,LR}
+    /*
+     * The ! means "Register write-back": 
+     * the base register is used to calculate the address of the transfer, and is updated.
+     * kind of like ! in Ruby
+     */
     stmdb SP!,{r0,r1}                   // Store SP - 8 = r0// SP - 4 = r1//
 
-    //--savecontext--
+    //-- SaveContext --
     ldr r0,=Running	                    // Load address to context
     ldr r0,[r0]                         // Get the value in that address r0
     add r0,r0,#4                        // r0 += 4
@@ -27,8 +28,11 @@ SaveContext:
     nop
     nop
     nop    
-    // Store return address, stands for the address of the next instruction in the context
-    // LR = Link Register for return address
+    
+    /* 
+     * Store return address, stands for the address of the next instruction in the context
+     * LR = Link Register for return address
+     */
     mov r1,LR
     str r1,[r0,#52]                   // Save LR to TCB->PC, r0 has been added 4 before
           

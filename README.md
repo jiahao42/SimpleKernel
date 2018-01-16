@@ -7,7 +7,7 @@ Course work for Computer System Engineering II
 
 Step 1 - Install [Homebrew](http://brew.sh/)
 
-Step 2 - Install GCC Arm Toolchain  
+Step 2 - Install GCC Arm Toolchain and QEMU  
 ```
 brew tap PX4/homebrew-px4
 brew update
@@ -51,3 +51,5 @@ Breakpoint 1, main () at src/context-demo.c:15
 15	  Running = &taskA;
 ```
 
+[Reference for installing GCC for ARM](https://gist.github.com/joegoggins/7763637)
+[Reference for simulation with QEMU on macOS](http://cgi.cs.indiana.edu/~geobrown/stm32/Main/Simulation)
