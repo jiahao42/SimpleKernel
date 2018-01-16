@@ -1,6 +1,5 @@
-
-#ifndef KERNEL_H
-#define KERNEL_H
+#ifndef LAMB_KERNEL_H_
+#define LAMB_KERNEL_H_
 
 // Debug option
 //#define       _DEBUG
@@ -58,12 +57,12 @@ typedef struct
 #else
 typedef struct
 {
-  uint    Context[CONTEXT_SIZE];   // 4 * 13 = 52     
-  uint    *SP; // 4
-  void    (*PC)(); // 4
-  uint    SPSR;     
-  uint    StackSeg[STACK_SIZE];
-  uint    DeadLine;
+  uint    Context[CONTEXT_SIZE];   // 4 * 13 = 52, 0 - 51   
+  uint    *SP; // 4, 52 - 55
+  void    (*PC)(); // 4, 56 - 59
+  uint    SPSR; // 4
+  uint    StackSeg[STACK_SIZE]; // 4 * 100 = 400
+  uint    DeadLine; // 4
 } TCB;
 #endif
 

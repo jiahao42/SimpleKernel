@@ -1,37 +1,60 @@
 // main.c
 
-#include "kernel.h"
+#include "tcb_chain.h"
+#include <time.h>
+#include <stdlib.h>
 
 TCB taskA;
 TCB *Running;
 
-void task1(void);
+void task1();
+void task2();
+void task3();
 
-void TimerInt(void) {}
+void TimerInt() {}
 
-int main(void) {
+int main() {
 
+  TCB_chain* tcb_chain = create_tcb_chain();
 
-  Running = &taskA;
-  Running->PC = task1;
-  Running->SP = &(Running->StackSeg[STACK_SIZE - 1]);
+  TCB taskA;
+  taskA.PC = &task1;
 
-  LoadContext();
+  TCB taskB;
+  taskB.PC = &task2;
+
+  TCB taskC;
+  taskC.PC = &task3;
+
+  tcb_append(tcb_chain, create_tcb_node(&taskA));
+  tcb_append(tcb_chain, create_tcb_node(&taskB));
+  tcb_append(tcb_chain, create_tcb_node(&taskC));
+
+  srand(time(NULL));
+
+  int i = 0;
+  while (i++ < 10) {
+    int r = rand() % 3;
+    Running = tcb_get_data(tcb_chain, r);
+    // Running->SP = &(Running->StackSeg[STACK_SIZE - 1]);
+    LoadContext();
+  }
+  tcb_destroy_chain(tcb_chain);
+
   return 0;
 }
 
 void task1(void) {
-  register int reg_var = 1;
-  volatile int vol_var = 1;
+  const char* str = "I am task1";
+  str++;
+}
 
-  SaveContext(); // reg_var = 1 vol_var = 1;
-  reg_var++;
-  vol_var++;
+void task2() {
+  const char* str = "I am task2";
+  str++;
+}
 
-  SaveContext(); // reg_var = 2 vol_var = 2;
-  reg_var++;
-  vol_var++;
-  int dummy = reg_var + vol_var;
-
-  LoadContext();
+void task3() {
+  const char* str = "I am task3";
+  str++;
 }

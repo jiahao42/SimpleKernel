@@ -22,7 +22,8 @@ SaveContext:
     //-- SaveContext --
     ldr r0,=Running	                    // Load address to context
     ldr r0,[r0]                         // Get the value in that address r0
-    add r0,r0,#4                        // r0 += 4
+    
+    add r0,r0,#4                        // r0: offset 4
     // STMIA = Store Multiple Increment After
     stmia r0,{r1-r12}	                // Save registers r1-r12
     nop
@@ -34,14 +35,19 @@ SaveContext:
      * LR = Link Register for return address
      */
     mov r1,LR
-    str r1,[r0,#52]                   // Save LR to TCB->PC, r0 has been added 4 before
+    str r1,[r0,#52]                  // Save LR to TCB->PC(r0: offset 4+52), r0 has been added 4 before
           
+    /*
+     * STR instructions store a word to memory.
+     * LDR instructions load a word from memory.
+     */
     // mrs = Move to ARM register from system coprocessor register.
+    // CPSR = Current Program Status Register
     mrs r1,CPSR                      // Load CPSR into r1
-    str r1, [r0,#56]                 // and save to TCB->SPSR
-    sub r0,r0,#4                     // Makes r0 point to context->r0
+    str r1, [r0,#56]                 // and save to TCB->SPSR(r0: offset 4+56)
+    sub r0,r0,#4                     // Makes r0 point to context->r0(r0: offset 0)
     ldr r1,[SP]                      // Loads r0 from stack
-    str r1,[r0]		                 // Saves r0. 
+    str r1,[r0]		                 // Saves r0 
          
     add r1,SP,#8                     // Fetch Stackpointer
     str r1,[r0,#52]                  // and save to TCB->SP  	  
@@ -53,19 +59,19 @@ SaveContext:
 //***************************************************************************    
 LoadContext:
 
-    ldr r0,=Running
-    ldr r0,[r0]
-		
-    ldr r1, [r0,#52]                  // Catch Running-> SP
-    sub SP,SP,#8	              // Find a unused stack area
-    stmda SP!,{r1}                    // and put SP on the temporary stack 
-    ldr r1,[r0,#4]                    // Fetch r0's value.TCB->context[1]
-    stmda SP!,{r1}                    // push r1's value to stack       
-    ldr r1,[r0]                       // Fetch r0's value.TCB->context[0]
-    stmda SP!,{r1}                    // push r0's value to stack      
-       
+    ldr r0,=Running                 // Load address to context
+    ldr r0,[r0]                     // Get the value in that address r0
+
+    ldr r1, [r0,#52]                // Catch Running-> SP
+    sub SP,SP,#8	                // Find a unused stack area
+    stmda SP!,{r1}                  // and put SP on the temporary stack 
+    ldr r1,[r0,#4]                  // Fetch r0's value.TCB->context[1]
+    stmda SP!,{r1}                  // push r1's value to stack       
+    ldr r1,[r0]                     // Fetch r0's value.TCB->context[0]
+    stmda SP!,{r1}                  // push r0's value to stack      
+
     add r0,r0,#4            
-    ldmia r0!,{r1-r12}^               // Restore values for r1-r12          
+    ldmia r0!,{r1-r12}^             // Restore values for r1-r12          
 
     ldr r0,=Running
     ldr r0,[r0]    

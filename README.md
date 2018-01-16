@@ -1,7 +1,7 @@
 # LambKernel
 Course work for Computer System Engineering II
 
-## Prerequisite  
+## Prerequisite on macOS
 
 #### Download GCC for ARM and QEMU
 
@@ -15,17 +15,21 @@ brew install gcc-arm-none-eabi-49
 brew install qemu
 ```
 
-## How to run and debug
+## How to run and debug on macOS
 
 ```plaintext
 James:~/LambKernel ► make
-James:~/LambKernel ► make qemu-gdb
+James:~/LambKernel ► make qemu-gdb                                                      
+***
+*** Now run 'arm-none-eabi-gdb'.
+***
+qemu-system-arm -kernel kern/kernel.elf -machine realview-pb-a8 -cpu cortex-a8 -nographic -monitor null -serial null -semihosting  -S -gdb tcp::25501
 ```
 
 **Using gdb to attach process in another terminal:**  
 
 ```plaintext
-James:~/LambKernel ► arm-none-eabi-gdb                                         (master✱) 
+James:~/LambKernel ► arm-none-eabi-gdb                                          
 GNU gdb (GNU Tools for ARM Embedded Processors) 7.8.0.20150604-cvs
 Copyright (C) 2014 Free Software Foundation, Inc.
 License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>

@@ -5,7 +5,7 @@ ASFLAGS = -g3 -Wall
 SRC = src
 OBJ = obj
 KERN = kern
-KERNEL_MODULES = context context-demo
+KERNEL_MODULES = context kern_util kernel context-demo 
 KERNEL_OBJS = $(KERNEL_MODULES:%=$(OBJ)/%.o)
 
 $(KERN)/kernel.elf: $(KERNEL_OBJS)
@@ -23,7 +23,7 @@ $(OBJ)/context.o: $(SRC)/context.S
 QEMU = qemu-system-arm
 # try to generate a unique GDB port
 GDBPORT	:= $(shell expr `id -u` % 5000 + 25000)
-# QEMU's gdb stub command line changed in 0.11
+# QEMU's gdb stub command line
 QEMUGDB = $(shell if $(QEMU) -nographic -help | grep -q '^-gdb'; \
 	then echo "-gdb tcp::$(GDBPORT)"; \
 	else echo "-s -p $(GDBPORT)"; fi)
