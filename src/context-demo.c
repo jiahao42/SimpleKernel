@@ -39,7 +39,8 @@ int main() {
   while (i++ < 10) {
     int r = rand() % 3;
     Running = tcb_get_data(tcb_chain, r);
-    LoadContext();
+    Running->PC();
+    // LoadContext();
   }
   tcb_destroy_chain(tcb_chain);
 
