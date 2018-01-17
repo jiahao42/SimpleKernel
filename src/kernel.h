@@ -1,7 +1,7 @@
 #ifndef LAMB_KERNEL_H_
 #define LAMB_KERNEL_H_
 
-#include "tcb_chain.h"
+#include "tcb.h"
 
 #define OS_ERROR(e)  \
   if (!(e)) { \
@@ -18,15 +18,6 @@
 /*********************************************************/
 
 #include <stdlib.h>
-#ifdef texas_dsp
-
-#define CONTEXT_SIZE 34 - 2
-
-#else
-
-#define CONTEXT_SIZE 13
-#define STACK_SIZE 100
-#endif
 
 #define TRUE 1
 #define FALSE !TRUE
@@ -47,31 +38,10 @@
 typedef enum {
   success = 0,
 } exception;
-typedef int bool;
-typedef unsigned int uint;
+
 typedef int action;
 
 struct l_obj; // Forward declaration
-
-// Task Control Block, TCB
-#ifdef texas_dsp
-typedef struct {
-  void (*PC)();
-  uint *SP;
-  uint Context[CONTEXT_SIZE];
-  uint StackSeg[STACK_SIZE];
-  uint DeadLine;
-} TCB;
-#else
-typedef struct {
-  uint Context[CONTEXT_SIZE]; // 4 * 13 = 52, 0 - 51
-  uint *SP;                   // 4, 52 - 55
-  void (*PC)();               // 4, 56 - 59
-  uint SPSR;                  // 4, 60 - 63
-  uint StackSeg[STACK_SIZE];  // 4 * 100 = 400
-  uint DeadLine;              // 4
-} TCB;
-#endif
 
 // Message items
 typedef struct msgobj {
@@ -107,17 +77,6 @@ typedef struct {
   listobj *pTail;
 } list;
 
-typedef struct TCB_node {
-  TCB data;
-  struct TCB_node *prev;
-  struct TCB_node *next;
-} TCB_node;
-
-typedef struct {
-  TCB_node *head;
-  TCB_node *tail;
-} TCB_chain;
-
 // Function prototypes
 
 // Task administration
@@ -151,7 +110,7 @@ SaveContext(void); // Stores DSP registers in TCB pointed to by Running
 extern void
 LoadContext(void); // Restores DSP registers from TCB pointed to by Running
 
-/* TCB Chain */
+/* TCB */
 void init_tcb_node(TCB_node *node, TCB *data);
 TCB_node *create_tcb_node(TCB *data);
 void destroy_tcb_node(TCB_node *node);
