@@ -4,7 +4,7 @@ AS = arm-none-eabi-as
 ASFLAGS = -g3 -Wall
 SRC = src
 OBJDIR = obj
-KERNEL_MODULES = context kern_util kernel context-demo 
+KERNEL_MODULES = context kern_util context-demo 
 KERNEL_OBJS = $(KERNEL_MODULES:%=$(OBJDIR)/%.o)
 KERNEL = kern/kernel.elf
 
@@ -37,7 +37,7 @@ QEMUOPTS = -kernel $(KERNEL) -machine realview-pb-a8 -cpu cortex-a8 \
 
 qemu-gdb: $(KERNEL) .gdbinit
 	@echo "***"
-	@echo "*** Now run 'arm-none-eabi-gdb'." 1>&2
+	@echo "*** Now run 'arm-none-eabi-gdb' in another terminal." 1>&2
 	@echo "***"
 	$(QEMU) $(QEMUOPTS) -S $(QEMUGDB)
 

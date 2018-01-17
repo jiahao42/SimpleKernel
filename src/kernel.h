@@ -1,6 +1,8 @@
 #ifndef LAMB_KERNEL_H_
 #define LAMB_KERNEL_H_
 
+#include "tcb_chain.h"
+
 #define OS_ERROR(e)  \
   if (!(e)) { \
     do {  \
@@ -105,6 +107,17 @@ typedef struct {
   listobj *pTail;
 } list;
 
+typedef struct TCB_node {
+  TCB data;
+  struct TCB_node *prev;
+  struct TCB_node *next;
+} TCB_node;
+
+typedef struct {
+  TCB_node *head;
+  TCB_node *tail;
+} TCB_chain;
+
 // Function prototypes
 
 // Task administration
@@ -137,5 +150,16 @@ extern void
 SaveContext(void); // Stores DSP registers in TCB pointed to by Running
 extern void
 LoadContext(void); // Restores DSP registers from TCB pointed to by Running
+
+/* TCB Chain */
+void init_tcb_node(TCB_node *node, TCB *data);
+TCB_node *create_tcb_node(TCB *data);
+void destroy_tcb_node(TCB_node *node);
+TCB_chain *create_tcb_chain();
+void tcb_append(TCB_chain *chain, TCB_node *node);
+void tcb_insert_after(TCB_node *pos, TCB_node *n_node);
+void tcb_insert_before(TCB_node *pos, TCB_node *n_node);
+TCB_node *tcb_get_node(TCB_chain *chain, int index);
+TCB *tcb_get_data(TCB_chain *chain, int index);
 
 #endif

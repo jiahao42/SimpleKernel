@@ -4,17 +4,6 @@
 #include "kern_util.h"
 #include "kernel.h"
 
-typedef struct TCB_node {
-  TCB data;
-  struct TCB_node *prev;
-  struct TCB_node *next;
-} TCB_node;
-
-typedef struct {
-  TCB_node *head;
-  TCB_node *tail;
-} TCB_chain;
-
 void init_tcb_node(TCB_node *node, TCB *data) {
   node->data = *data;
   node->next = NULL;

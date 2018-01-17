@@ -2,8 +2,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-static unsigned int malloc_counter;
-static unsigned int free_counter;
+unsigned int malloc_counter;
+unsigned int free_counter;
 
 void *safe_malloc(unsigned int size) {
   void *mem = malloc(size);
