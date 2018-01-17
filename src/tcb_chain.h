@@ -73,6 +73,7 @@ void tcb_destroy_chain(TCB_chain *chain) {
     chain->head = chain->head->next;
     safe_free(cursor);
   }
+  safe_free(chain);
 }
 
 TCB_node *tcb_get_node(TCB_chain *chain, int index) {

@@ -1,19 +1,25 @@
 #include "kern_util.h"
 #include <stdlib.h>
 
-static unsigned int mem_used;
+static unsigned int malloc_counter;
+static unsigned int free_counter;
 
 void *safe_malloc(unsigned int size) {
   void *mem = malloc(size);
   if (mem == NULL) {
     return NULL;
   } else {
-    mem_used += size;
+    #ifdef MEM_DEBUG
+      printf("**** malloc[%d] ****\n", malloc_counter++);
+    #endif
     return mem;
   }
 }
 
 void safe_free(void *pt) {
-  mem_used -= sizeof(*pt);
+  #ifdef MEM_DEBUG
+    printf("**** free[%d] ****\n", free_counter++);
+  #endif
   free(pt);
+  pt = NULL;
 }

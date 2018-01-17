@@ -1,8 +1,7 @@
-// main.c
-
 #include "tcb_chain.h"
 #include <time.h>
 #include <stdlib.h>
+
 
 TCB taskA;
 TCB *Running;
