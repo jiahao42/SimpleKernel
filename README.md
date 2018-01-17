@@ -26,7 +26,7 @@ James:~/LambKernel ► make qemu-gdb
 qemu-system-arm -kernel kern/kernel.elf -machine realview-pb-a8 -cpu cortex-a8 -nographic -monitor null -serial null -semihosting  -S -gdb tcp::25501
 ```
 
-**Using gdb to attach process in another terminal:**  
+**Using arm-none-eabi-gdb to attach process in another terminal:**  
 
 ```plaintext
 James:~/LambKernel ► arm-none-eabi-gdb                                          
