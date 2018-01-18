@@ -1,7 +1,7 @@
 #ifndef LAMB_KERNEL_H_
 #define LAMB_KERNEL_H_
 
-#include "tcb.h"
+#include "inc/tcb.h"
 
 #define OS_ERROR(e)  \
   if (!(e)) { \

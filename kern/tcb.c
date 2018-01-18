@@ -1,5 +1,5 @@
-#include <kern/kern_util.h>
-#include <inc/tcb.h>
+#include "kern_util.h"
+#include "inc/tcb.h"
 
 void init_tcb_node(TCB_node *node, TCB *data) {
   node->data = *data;

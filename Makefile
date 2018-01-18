@@ -4,7 +4,7 @@ AS = arm-none-eabi-as
 ASFLAGS = -g3 -Wall
 OBJDIR = obj
 KERN = kern
-KERNEL_MODULES = context kern_util context-demo 
+KERNEL_MODULES = tcb context kern_util context-demo 
 KERNEL_OBJS = $(KERNEL_MODULES:%=$(OBJDIR)/%.o)
 KERNEL = kernel.elf
 TOP = .
