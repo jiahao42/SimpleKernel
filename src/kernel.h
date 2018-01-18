@@ -105,20 +105,18 @@ void set_deadline(uint nNew);
 // Interrupt
 extern void isr_off(void);
 extern void isr_on(void);
-extern void
-SaveContext(void); // Stores DSP registers in TCB pointed to by Running
-extern void
-LoadContext(void); // Restores DSP registers from TCB pointed to by Running
+extern void SaveContext(void); // Stores DSP registers in TCB pointed to by Running
+extern void LoadContext(void); // Restores DSP registers from TCB pointed to by Running
 
 /* TCB */
-void init_tcb_node(TCB_node *node, TCB *data);
-TCB_node *create_tcb_node(TCB *data);
-void destroy_tcb_node(TCB_node *node);
-TCB_chain *create_tcb_chain();
-void tcb_append(TCB_chain *chain, TCB_node *node);
-void tcb_insert_after(TCB_node *pos, TCB_node *n_node);
-void tcb_insert_before(TCB_node *pos, TCB_node *n_node);
-TCB_node *tcb_get_node(TCB_chain *chain, int index);
-TCB *tcb_get_data(TCB_chain *chain, int index);
+extern void init_tcb_node(TCB_node *node, TCB *data);
+extern TCB_node *create_tcb_node(TCB *data);
+extern void destroy_tcb_node(TCB_node *node);
+extern TCB_chain *create_tcb_chain();
+extern void tcb_append(TCB_chain *chain, TCB_node *node);
+extern void tcb_insert_after(TCB_node *pos, TCB_node *n_node);
+extern void tcb_insert_before(TCB_node *pos, TCB_node *n_node);
+extern TCB_node *tcb_get_node(TCB_chain *chain, int index);
+extern TCB *tcb_get_data(TCB_chain *chain, int index);
 
 #endif

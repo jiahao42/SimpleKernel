@@ -21,6 +21,11 @@ $(OBJDIR)/context.o: $(SRC)/context.S
 	$(AS) $(ASFLAGS) -c -o $(OBJDIR)/context.o $(SRC)/context.S
 
 QEMU = qemu-system-arm
+# Use `qemu-system-arm -machine help -nographic` to check
+MACHINE = realview-pb-a8
+# Use 'qemu-system-arm -machine [Machine name] -cpu help` to check
+CPU = cortex-a8
+
 # try to generate a unique GDB port
 GDBPORT	:= $(shell expr `id -u` % 5000 + 25000)
 # QEMU's gdb stub command line
@@ -28,8 +33,7 @@ QEMUGDB = $(shell if $(QEMU) -nographic -help | grep -q '^-gdb'; \
 	then echo "-gdb tcp::$(GDBPORT)"; \
 	else echo "-s -p $(GDBPORT)"; fi)
 
-
-QEMUOPTS = -kernel $(KERNEL) -machine realview-pb-a8 -cpu cortex-a8 \
+QEMUOPTS = -kernel $(KERNEL) -machine $(MACHINE) -cpu $(CPU) \
 	-nographic -monitor null -serial null -semihosting $(QEMUEXTRA)
 
 .gdbinit: .gdbinit.tmpl
