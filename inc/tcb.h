@@ -45,11 +45,14 @@ typedef struct {
 } TCB_chain;
 
 
-/* TCB */
+/* TCB node*/
 extern void init_tcb_node(TCB_node *node, TCB *data);
 extern TCB_node *create_tcb_node(TCB *data);
 extern void destroy_tcb_node(TCB_node *node);
+
+/* TCB chain */
 extern TCB_chain *create_tcb_chain();
+extern void tcb_destroy_chain(TCB_chain *chain);
 extern void tcb_append(TCB_chain *chain, TCB_node *node);
 extern void tcb_insert_after(TCB_node *pos, TCB_node *n_node);
 extern void tcb_insert_before(TCB_node *pos, TCB_node *n_node);

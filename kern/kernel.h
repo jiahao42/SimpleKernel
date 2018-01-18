@@ -1,14 +1,9 @@
 #ifndef LAMB_KERNEL_H_
 #define LAMB_KERNEL_H_
 
+#include "inc/type.h"
 #include "inc/tcb.h"
-
-#define OS_ERROR(e)  \
-  if (!(e)) { \
-    do {  \
-    printf("OS-ERROR in file: (%s), on line: %d\n", __FILE__, __LINE__); \
-    } while (1); \
-  }
+#include "inc/test.h"
 
 // Debug option
 //#define       _DEBUG

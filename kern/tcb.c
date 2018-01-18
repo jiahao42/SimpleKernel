@@ -1,5 +1,6 @@
 #include "kern_util.h"
 #include "inc/tcb.h"
+#include "inc/error.h"
 
 void init_tcb_node(TCB_node *node, TCB *data) {
   node->data = *data;
@@ -9,6 +10,7 @@ void init_tcb_node(TCB_node *node, TCB *data) {
 
 TCB_node *create_tcb_node(TCB *data) {
   TCB_node *node = (TCB_node *)safe_malloc(sizeof(TCB_node));
+  if (node == NULL) OS_ERROR(E_NO_MEM);
   init_tcb_node(node, data);
   return node;
 }
@@ -21,6 +23,7 @@ void destroy_tcb_node(TCB_node *node) {
 
 TCB_chain *create_tcb_chain() {
   TCB_chain *chain = (TCB_chain *)safe_malloc(sizeof(TCB_chain));
+  if (chain == NULL) OS_ERROR(E_NO_MEM);
   chain->head = NULL;
   chain->tail = NULL;
   return chain;

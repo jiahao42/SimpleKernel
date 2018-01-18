@@ -1,13 +1,15 @@
 CC = arm-none-eabi-gcc
 CFLAGS = -O0 -g3 -Wall -mcpu=cortex-a8 -mthumb
 AS = arm-none-eabi-as
-ASFLAGS = -g3 -Wall
+ASFLAGS = -g3
 OBJDIR = obj
 KERN = kern
-KERNEL_MODULES = tcb context kern_util context-demo 
+KERNEL_MODULES = tcb test context kern_util context-demo 
 KERNEL_OBJS = $(KERNEL_MODULES:%=$(OBJDIR)/%.o)
 KERNEL = kernel.elf
 TOP = .
+
+all:	_clearscreen	$(KERNEL)
 
 $(KERNEL): $(KERNEL_OBJS)
 	$(CC) $(CFLAGS) --specs=nosys.specs -o $(KERNEL) $(KERNEL_OBJS)
@@ -45,6 +47,10 @@ qemu-gdb: $(KERNEL) .gdbinit
 	@echo "***"
 	$(QEMU) $(QEMUOPTS) -S $(QEMUGDB)
 
+.PHONY: clean _clearscreen
 
 clean:
 	rm $(OBJDIR)/*.o
+
+_clearscreen:
+	clear

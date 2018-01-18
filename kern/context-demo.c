@@ -11,7 +11,8 @@ void task1();
 void TimerInt() {}
 
 int main() {
-
+  test_suite();
+  
   tcb_chain = create_tcb_chain();
 
   TCB taskA;
