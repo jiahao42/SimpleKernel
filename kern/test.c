@@ -46,14 +46,14 @@ void test_tcb() {
   EXPECT_EQ_TCB_NODE(node0, tcb_chain->head);
   EXPECT_EQ_TCB_NODE(node2, tcb_chain->tail);
 
-  tcb_insert_after(node1, node3); // node0 <--> node1 <--> node3 <--> node2
+  tcb_insert_after(tcb_chain, node1, node3); // node0 <--> node1 <--> node3 <--> node2
   EXPECT_EQ_TCB_NODE(node3, tcb_get_node(tcb_chain, 2));
   EXPECT_EQ_TCB_NODE(node1, node3->prev);
   EXPECT_EQ_TCB_NODE(node2, node3->next);
   EXPECT_EQ_TCB_NODE(node3, node1->next);
   EXPECT_EQ_TCB_NODE(node3, node2->prev);
   
-  tcb_insert_before(node4, node0); // node4 <--> node0 <--> node1 <--> node3 <--> node2
+  tcb_insert_before(tcb_chain, node0, node4); // node4 <--> node0 <--> node1 <--> node3 <--> node2
   EXPECT_EQ_TCB_NODE(node4, tcb_get_node(tcb_chain, 0));
   EXPECT_EQ_TCB_NODE(node0, node4->next);
   EXPECT_EQ_TCB_NODE(node4, node0->prev);

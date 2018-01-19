@@ -41,14 +41,34 @@ void tcb_append(TCB_chain *chain, TCB_node *node) {
   }
 }
 
-void tcb_insert_after(TCB_node *pos, TCB_node *n_node) {
+void tcb_prepend(TCB_chain *chain, TCB_node *node) {
+  if (chain->head == NULL) {
+    chain->head = node;
+    chain->tail = node;
+  } else {
+    node->prev = NULL;
+    node->next = chain->head;
+    chain->head->prev = node;
+    chain->head = node;
+  }
+}
+
+void tcb_insert_after(TCB_chain *chain, TCB_node *pos, TCB_node *n_node) {
+  if (pos->next == NULL) {
+    tcb_append(chain, n_node);
+    return;
+  }
   n_node->next = pos->next;
   n_node->prev = pos;
   pos->next = n_node;
   n_node->next->prev = n_node;
 }
 
-void tcb_insert_before(TCB_node *pos, TCB_node *n_node) {
+void tcb_insert_before(TCB_chain *chain, TCB_node *pos, TCB_node *n_node) {
+  if (pos->prev == NULL) {
+    tcb_prepend(chain, n_node);
+    return;
+  }
   n_node->prev = pos->prev;
   n_node->next = pos;
   pos->prev->next = n_node;
