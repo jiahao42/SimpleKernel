@@ -25,43 +25,43 @@ void test_tcb() {
   TCB_node *node3 = create_tcb_node(&dummy3);
   TCB_node *node4 = create_tcb_node(&dummy4);
   TCB_node *node5 = create_tcb_node(&dummy5);
-  TCB_chain *tcb_chain = create_tcb_chain();
+  TCB_list *tcb_list = create_tcb_list();
 
   /* Test begin */
-  tcb_append(tcb_chain, node0); // [node0]
-  EXPECT_EQ_TCB_NODE(node0, tcb_get_node(tcb_chain, 0));
-  EXPECT_EQ_TCB_NODE(node0, tcb_chain->head);
-  EXPECT_EQ_TCB_NODE(node0, tcb_chain->tail);
+  tcb_append(tcb_list, node0); // [node0]
+  EXPECT_EQ_TCB_NODE(node0, tcb_get_node(tcb_list, 0));
+  EXPECT_EQ_TCB_NODE(node0, tcb_list->head);
+  EXPECT_EQ_TCB_NODE(node0, tcb_list->tail);
 
-  tcb_append(tcb_chain, node1); // node0 <--> [node1]
-  EXPECT_EQ_TCB_NODE(node1, tcb_get_node(tcb_chain, 1));
+  tcb_append(tcb_list, node1); // node0 <--> [node1]
+  EXPECT_EQ_TCB_NODE(node1, tcb_get_node(tcb_list, 1));
   EXPECT_EQ_TCB_NODE(node0, node1->prev);
   EXPECT_EQ_TCB_NODE(node1, node0->next);
-  EXPECT_EQ_TCB_NODE(node0, tcb_chain->head);
-  EXPECT_EQ_TCB_NODE(node1, tcb_chain->tail);
+  EXPECT_EQ_TCB_NODE(node0, tcb_list->head);
+  EXPECT_EQ_TCB_NODE(node1, tcb_list->tail);
 
-  tcb_append(tcb_chain, node2); // node0 <--> node1 <--> [node2]
-  EXPECT_EQ_TCB_NODE(node2, tcb_get_node(tcb_chain, 2));
+  tcb_append(tcb_list, node2); // node0 <--> node1 <--> [node2]
+  EXPECT_EQ_TCB_NODE(node2, tcb_get_node(tcb_list, 2));
   EXPECT_EQ_TCB_NODE(node1, node2->prev);
   EXPECT_EQ_TCB_NODE(node2, node1->next);
-  EXPECT_EQ_TCB_NODE(node0, tcb_chain->head);
-  EXPECT_EQ_TCB_NODE(node2, tcb_chain->tail);
+  EXPECT_EQ_TCB_NODE(node0, tcb_list->head);
+  EXPECT_EQ_TCB_NODE(node2, tcb_list->tail);
 
-  tcb_insert_after(tcb_chain, node1, node3); // node0 <--> node1 <--> [node3] <--> node2
-  EXPECT_EQ_TCB_NODE(node3, tcb_get_node(tcb_chain, 2));
+  tcb_insert_after(tcb_list, node1, node3); // node0 <--> node1 <--> [node3] <--> node2
+  EXPECT_EQ_TCB_NODE(node3, tcb_get_node(tcb_list, 2));
   EXPECT_EQ_TCB_NODE(node1, node3->prev);
   EXPECT_EQ_TCB_NODE(node2, node3->next);
   EXPECT_EQ_TCB_NODE(node3, node1->next);
   EXPECT_EQ_TCB_NODE(node3, node2->prev);
   
-  tcb_insert_before(tcb_chain, node0, node4); // [node4] <--> node0 <--> node1 <--> node3 <--> node2
-  EXPECT_EQ_TCB_NODE(node4, tcb_get_node(tcb_chain, 0));
+  tcb_insert_before(tcb_list, node0, node4); // [node4] <--> node0 <--> node1 <--> node3 <--> node2
+  EXPECT_EQ_TCB_NODE(node4, tcb_get_node(tcb_list, 0));
   EXPECT_EQ_TCB_NODE(node0, node4->next);
   EXPECT_EQ_TCB_NODE(node4, node0->prev);
 
   // node4 <--> node0 <--> [node5] <--> node1 <--> node3 <--> node2
-  tcb_insert_before(tcb_chain, node1, node5);
-  EXPECT_EQ_TCB_NODE(node5, tcb_get_node(tcb_chain, 2));
+  tcb_insert_before(tcb_list, node1, node5);
+  EXPECT_EQ_TCB_NODE(node5, tcb_get_node(tcb_list, 2));
   EXPECT_EQ_TCB_NODE(node0, node5->prev);
   EXPECT_EQ_TCB_NODE(node1, node5->next);
   EXPECT_EQ_TCB_NODE(node5, node0->next);

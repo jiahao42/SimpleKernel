@@ -4,6 +4,7 @@
 #include "inc/type.h"
 #include "inc/tcb.h"
 #include "inc/test.h"
+#include "kernel_hwdep.h"
 
 // Debug option
 //#define       _DEBUG
@@ -75,6 +76,11 @@ typedef struct {
 // Function prototypes
 
 // Task administration
+extern uint tick_counter;
+extern TCB *Running;
+extern TCB_list* ready_list;
+extern uint kernel_mode;
+
 int init_kernel(void);
 exception create_task(void (*body)(), uint d);
 void terminate(void);

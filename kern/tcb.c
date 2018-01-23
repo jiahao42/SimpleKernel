@@ -3,14 +3,13 @@
 #include "inc/error.h"
 
 void init_tcb_node(TCB_node *node, TCB *data) {
-  node->data = *data;
+  node->data = data;
   node->next = NULL;
   node->prev = NULL;
 }
 
 TCB_node *create_tcb_node(TCB *data) {
   TCB_node *node = (TCB_node *)safe_malloc(sizeof(TCB_node));
-  if (node == NULL) OS_ERROR(E_NO_MEM);
   init_tcb_node(node, data);
   return node;
 }
@@ -21,15 +20,14 @@ void destroy_tcb_node(TCB_node *node) {
   node->prev = NULL;
 }
 
-TCB_chain *create_tcb_chain() {
-  TCB_chain *chain = (TCB_chain *)safe_malloc(sizeof(TCB_chain));
-  if (chain == NULL) OS_ERROR(E_NO_MEM);
+TCB_list *create_tcb_list() {
+  TCB_list *chain = (TCB_list *)safe_malloc(sizeof(TCB_list));
   chain->head = NULL;
   chain->tail = NULL;
   return chain;
 }
 
-void tcb_append(TCB_chain *chain, TCB_node *node) {
+void tcb_append(TCB_list *chain, TCB_node *node) {
   if (chain->tail == NULL) {
     chain->head = node;
     chain->tail = node;
@@ -41,7 +39,7 @@ void tcb_append(TCB_chain *chain, TCB_node *node) {
   }
 }
 
-void tcb_prepend(TCB_chain *chain, TCB_node *node) {
+void tcb_prepend(TCB_list *chain, TCB_node *node) {
   if (chain->head == NULL) {
     chain->head = node;
     chain->tail = node;
@@ -53,7 +51,7 @@ void tcb_prepend(TCB_chain *chain, TCB_node *node) {
   }
 }
 
-void tcb_insert_after(TCB_chain *chain, TCB_node *pos, TCB_node *n_node) {
+void tcb_insert_after(TCB_list *chain, TCB_node *pos, TCB_node *n_node) {
   if (pos->next == NULL) {
     tcb_append(chain, n_node);
     return;
@@ -64,7 +62,7 @@ void tcb_insert_after(TCB_chain *chain, TCB_node *pos, TCB_node *n_node) {
   n_node->next->prev = n_node;
 }
 
-void tcb_insert_before(TCB_chain *chain, TCB_node *pos, TCB_node *n_node) {
+void tcb_insert_before(TCB_list *chain, TCB_node *pos, TCB_node *n_node) {
   if (pos->prev == NULL) {
     tcb_prepend(chain, n_node);
     return;
@@ -75,7 +73,7 @@ void tcb_insert_before(TCB_chain *chain, TCB_node *pos, TCB_node *n_node) {
   pos->prev = n_node;
 }
 
-void tcb_destroy_chain(TCB_chain *chain) {
+void tcb_destroy_chain(TCB_list *chain) {
   TCB_node *cursor = chain->head;
   for (; chain->head != NULL;) {
     cursor = chain->head;
@@ -85,7 +83,7 @@ void tcb_destroy_chain(TCB_chain *chain) {
   safe_free(chain);
 }
 
-TCB_node *tcb_get_node(TCB_chain *chain, int index) {
+TCB_node *tcb_get_node(TCB_list *chain, int index) {
   TCB_node *cursor = chain->head;
   int i = 0;
   for (; cursor != NULL; cursor = cursor->next) {
@@ -96,12 +94,12 @@ TCB_node *tcb_get_node(TCB_chain *chain, int index) {
   return NULL;
 }
 
-TCB *tcb_get_data(TCB_chain *chain, int index) {
+TCB *tcb_get_data(TCB_list *chain, int index) {
   TCB_node *cursor = chain->head;
   int i = 0;
   for (; cursor != NULL; cursor = cursor->next) {
     if (i++ == index) {
-      return &cursor->data;
+      return cursor->data;
     }
   }
   return NULL;

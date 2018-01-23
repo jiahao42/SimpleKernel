@@ -1,5 +1,5 @@
-#ifndef LAMB_KERNEL_TCB_CHAIN_H_
-#define LAMB_KERNEL_TCB_CHAIN_H_
+#ifndef LAMB_KERNEL_TCB_list_H_
+#define LAMB_KERNEL_TCB_list_H_
 
 #include "type.h"
 
@@ -34,7 +34,7 @@ typedef struct {
 #endif
 
 typedef struct TCB_node {
-  TCB data;
+  TCB *data;
   struct TCB_node *prev;
   struct TCB_node *next;
 } TCB_node;
@@ -42,7 +42,7 @@ typedef struct TCB_node {
 typedef struct {
   TCB_node *head;
   TCB_node *tail;
-} TCB_chain;
+} TCB_list;
 
 
 /* TCB node*/
@@ -51,13 +51,13 @@ extern TCB_node *create_tcb_node(TCB *data);
 extern void destroy_tcb_node(TCB_node *node);
 
 /* TCB chain */
-extern TCB_chain *create_tcb_chain();
-extern void tcb_destroy_chain(TCB_chain *chain);
-extern void tcb_append(TCB_chain *chain, TCB_node *node);
-extern void tcb_insert_after(TCB_chain *chain, TCB_node *pos, TCB_node *n_node);
-extern void tcb_insert_before(TCB_chain *chain, TCB_node *pos, TCB_node *n_node);
-extern TCB_node *tcb_get_node(TCB_chain *chain, int index);
-extern TCB *tcb_get_data(TCB_chain *chain, int index);
+extern TCB_list *create_tcb_list();
+extern void tcb_destroy_chain(TCB_list *chain);
+extern void tcb_append(TCB_list *chain, TCB_node *node);
+extern void tcb_insert_after(TCB_list *chain, TCB_node *pos, TCB_node *n_node);
+extern void tcb_insert_before(TCB_list *chain, TCB_node *pos, TCB_node *n_node);
+extern TCB_node *tcb_get_node(TCB_list *chain, int index);
+extern TCB *tcb_get_data(TCB_list *chain, int index);
 
 
 #endif

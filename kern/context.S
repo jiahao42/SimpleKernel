@@ -1,8 +1,12 @@
-.globl   SaveContext
-.globl   LoadContext
+.globl  SaveContext
+.globl  LoadContext
+.globl  Get_psr
+.globl  Set_psr
 .p2align 2
 .type    SaveContext,%function
 .type    LoadContext,%function
+.type    Get_psr,%function
+.type    Set_psr,%function
 
 // SP is the stack register a shortcut for typing r13. 
 // LR is the link register a shortcut for r14. 
@@ -133,3 +137,16 @@ r4 to r11: used to hold local variables.
 r0 to r3: used to hold argument values passed to a subroutine, 
     and also hold results returned from a subroutine.
 */
+
+
+//****************************************************************************
+// uint Get_psr(void), Get IRQ flag value
+// void Set_psr(uint), Set IRQ flag value
+//****************************************************************************
+Get_psr:
+    mrs r0,cpsr
+    bx  lr
+  
+Set_psr:
+    msr cpsr_c,r0
+    bx  lr
