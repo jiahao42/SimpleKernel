@@ -22,11 +22,10 @@ int init_kernel() {
 }
 
 exception create_task(void(*task_body)(), uint deadline) {
-/*
   TCB *tcb = (TCB*)safe_malloc(sizeof(TCB));
-  tcb->deadline = deadline;
+  tcb->DeadLine = deadline;
   tcb->PC = task_body;
-  tcb->SP = tcb->StackSeg[STACK_SIZE - 1];
+  tcb->SP = &tcb->StackSeg[STACK_SIZE - 1];
   TCB_node* node = create_tcb_node(tcb);
   if (node == NULL) {
     OS_ERROR(E_NO_MEM);
@@ -35,9 +34,10 @@ exception create_task(void(*task_body)(), uint deadline) {
     tcb_append(ready_list, node);
     return success;
   } else {
-
+    set_isr(ISR_OFF);
+    SaveContext();
+    // TODO
   }
-*/
 }
 
 void idle() {

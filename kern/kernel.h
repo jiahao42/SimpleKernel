@@ -4,6 +4,8 @@
 #include "inc/type.h"
 #include "inc/tcb.h"
 #include "inc/test.h"
+#include "inc/error.h"
+#include "kern_util.h"
 #include "kernel_hwdep.h"
 
 // Debug option

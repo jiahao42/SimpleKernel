@@ -26,9 +26,9 @@ unsigned int set_isr( unsigned int newCSR ) {
 void timer0_start(void)
 {
 /*Turn off all interrupt, just in case Bit 6, GIE=0, pp15-6 */
-  rSYSCON&= ~(0x40); 
-  rINTMSK =0x00;
-  rINTPND=0x00; 
+  rSYSCON &= ~(0x40); 
+  rINTMSK = 0x00;
+  rINTPND = 0x00; 
 
 /* Configure interrupt: Reset counter and enable counter interval mode operation 8-6 */
   rTCON0 =  0x40;
