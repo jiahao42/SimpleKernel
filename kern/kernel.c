@@ -1,24 +1,19 @@
 #include "kernel.h"
 
-// Task administration
-int init_kernel(void);
-exception create_task(void (*body)(), uint d);
 void terminate(void);
-void run(void);
 
-uint tick_counter;
 TCB *Running;
 TCB_list* ready_list;
 uint kernel_mode;
 
-int init_kernel() {
+exception init_kernel() {
   tick_counter = 0;
   ready_list = create_tcb_list();
   if (ready_list == NULL) {
-    return FAIL;
+    return fail;
   }
   kernel_mode = INIT;
-  return SUCCESS;
+  return success;
 }
 
 exception create_task(void(*task_body)(), uint deadline) {
@@ -38,8 +33,22 @@ exception create_task(void(*task_body)(), uint deadline) {
     SaveContext();
     // TODO
   }
+  return success;
 }
 
 void idle() {
   while(1);
+}
+
+/*
+Initialize interrupt timer
+Set the kernel in running mode
+Enable interrupts
+Load context
+*/
+void run(void) {
+  kernel_mode = RUNNING;
+  set_isr(ISR_ON);
+  Running = tcb_get_data(ready_list, 0);
+  Running->PC();
 }

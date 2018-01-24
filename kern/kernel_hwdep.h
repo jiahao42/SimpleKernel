@@ -1,6 +1,8 @@
 #ifndef KERNEL_HWDEP_H
 #define KERNEL_HWDEP_H
 
+#include "inc/type.h"
+
 #define CSR_BIT 0x80
 #define ISR_OFF 0x80
 #define ISR_ON 0x0
@@ -19,8 +21,10 @@
 #define rINTPND (*(volatile unsigned*)(0x7ffc004))
 #define rINTMSK (*(volatile unsigned*)(0x7ffc008))
 
+extern uint tick_counter;
 //void Init_IRQ_TINT0(void);
 unsigned int set_isr( unsigned int newCSR );
+void TimerInt();
 extern unsigned int Get_psr(void);
 extern void Set_psr(unsigned int PSR);
 

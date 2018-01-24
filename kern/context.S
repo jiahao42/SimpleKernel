@@ -1,12 +1,151 @@
+#include  "kernel_hwdep.h"
 .globl  SaveContext
 .globl  LoadContext
 .globl  Get_psr
 .globl  Set_psr
-.p2align 2
+.globl Timer0Int
+.globl isr_off
+.globl isr_on
 .type    SaveContext,%function
 .type    LoadContext,%function
 .type    Get_psr,%function
 .type    Set_psr,%function
+.type    Timer0Int, %function
+.type    isr_off, %function
+.type    isr_on, %function
+
+.p2align 2 // force 4 byte alignment
+
+//        ORG		0x100  
+//****************************************************************************
+// Timer0Int - Shell for timer interrupt.  
+//       1. Save context to Running->Context 
+//       2. Sign interrupt
+//       3. Branch to Timer interrupt in C
+//       4. Load context to Running->Context 
+//       5. Move the LinkReg minus offset to PC 
+//       6. Copy SPSR to the CPSR 
+//       7. Clear the interrupt flags
+//****************************************************************************            
+Timer0Int: 
+    stmdb SP!,{r0,r1,LR}
+    //-savecontext--
+    ldr r0,=Running	            // Load address to context
+    ldr r0,[r0]
+    add r0,r0,#4                
+    stmia r0,{r1-r12}	            // Save registers r1-r12
+    nop
+    nop
+    nop  
+          
+    mrs r1,SPSR                     // Load SPSR into r1
+    str r1, [r0,#56]                // Saves SPSR
+    sub r0,r0,#4                    // Makes r0 point to context->r0
+    ldr r1,[SP]                     // Loads r0 from stack
+    str r1,[r0]		            // Saves r0. 
+    ldmia SP!,{r1,r2,r3}
+    sub r1,LR,#4                    // Find orginal LR 
+    str r1,[r0,#56]
+    mrs r1,CPSR
+    orr r1,r1,#1                    // Change mode to Supervisor. Bit 0 = 1.  
+    msr CPSR_c,r1              
+    mov r1,SP
+    str r1,[r0,#52]                 // Save stackpointer to TCB->SP
+         
+    add r0,PC,#4                    // Prepare for jump
+    mov LR,r0
+    bl TimerInt                      // Branch to Timer interrupt in C-file
+        
+    ldr r0,=Running
+    ldr r0,[r0]		
+    ldr r1, [r0,#52]                // Catch Running-> SP
+    stmda SP!,{r1}                  // and put it on temporary stack.
+    ldr r1,[r0,#8]                  // Fetch r2's value.TCB->context[2]
+    stmda SP!,{r1}                  // and push to stack.    
+    ldr r1,[r0,#4]                  // Fetch r1's value.TCB->context[1]
+    stmda SP!,{r1}                  // and push to stack       
+    ldr r1,[r0]                     // Fetch r0's value.TCB->context[0]
+    stmda SP!,{r1}                  // and push stack.   
+       
+        
+    add r0,r0,#4            
+    ldmia r0!,{r1-r12}^             // Restore values for r1-r12        
+    ldr LR, [r0,#4]                 // Restore value for LR (PC)
+    cmp r14,#0
+    beq trap
+    ldr r0,[r0,#8]                  // Load value for SPSR
+    msr SPSR_c,r0                                
+      
+//-Enable timer interrupt-         
+    ldr r0,=0x100                   // rINTMSK = 0x100
+    ldr r2,=0x7ffc008               // TODO =rINTMSK                         
+    str r0, [r2]
+        
+//----- Enable timer and clear counter--,
+    ldr r0,=0xc8                    // rTCON0 =  0xc8                       
+    ldr r2,=0x7ff9003               // TODO =rTCON0
+    strb r0,[r2]
+        
+//-----rINTPND clear pending
+    ldr r0,=0x00             
+    ldr r2,=0x7ffc004               // TODO =rINTPND
+    strb r0,[r2]
+        
+    mrs r1,CPSR
+    orr r1,r1,#1                    // Change mode to Supervisor. Bit 0 = 1.  
+    msr CPSR_c,r1        
+    mrs r0,SPSR
+    bic r0,r0,#128                  // Clear IRQ disable bit. Bit 7.       
+    bic r0,r0,#4                    // Change mode to Supervisor. Bit 3 = 0. 
+    msr SPSR_c, r0      
+    nop 
+    nop
+    nop     
+    ldmib   SP!,{r0,r1,r2}     
+    ldr SP,[r13,#4] 
+    subs PC,r14,#0
+
+
+//****************************************************************************
+// void isr_on(void) - EnableInterrupt
+//   Clear interrupt request and
+//   Interrupt disable flag = 0  
+//****************************************************************************
+isr_on:
+    stmdb SP!,{r12}  
+    mrs r12,cpsr
+    bic r12,r12,#192
+    msr cpsr_c,r12
+    ldmia   SP!,{r12} 
+    bx  lr	
+//****************************************************************************
+// uint Get_psr(void), Get IRQ flag value
+// void Set_psr(uint), Set IRQ flag value
+//****************************************************************************
+Get_psr:
+    mrs r0,cpsr
+    bx  lr
+  
+Set_psr:
+    msr cpsr_c,r0
+    bx  lr
+  
+//****************************************************************************
+// void isr_off(void)
+// DisableInterrupt flag = 1
+// Clear the interrupt flags in PSR 
+//****************************************************************************
+isr_off:
+    stmdb SP!,{r12}
+    mrs r12,cpsr
+    orr r12,r12,#192
+    msr cpsr_c,r12
+    mrs r12,cpsr
+    ands r12,r12,#192
+    beq isr_off
+    ldmia   SP!,{r12}
+    bx  lr
+        
 
 // SP is the stack register a shortcut for typing r13. 
 // LR is the link register a shortcut for r14. 
@@ -137,16 +276,3 @@ r4 to r11: used to hold local variables.
 r0 to r3: used to hold argument values passed to a subroutine, 
     and also hold results returned from a subroutine.
 */
-
-
-//****************************************************************************
-// uint Get_psr(void), Get IRQ flag value
-// void Set_psr(uint), Set IRQ flag value
-//****************************************************************************
-Get_psr:
-    mrs r0,cpsr
-    bx  lr
-  
-Set_psr:
-    msr cpsr_c,r0
-    bx  lr

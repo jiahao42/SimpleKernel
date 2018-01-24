@@ -1,10 +1,10 @@
 CC = arm-none-eabi-gcc
-CFLAGS = -O0 -g3 -Wall -mcpu=cortex-a8 -mthumb
+CFLAGS = -O0 -g3 -Wall -mcpu=cortex-a8 -mthumb # -marm
 AS = arm-none-eabi-as
-ASFLAGS = -g3
+ASFLAGS = -g3 -mcpu=cortex-a8
 OBJDIR = obj
 KERN = kern
-KERNEL_MODULES = tcb test context kernel kern_util kernel_hwdep context-demo 
+KERNEL_MODULES = context tcb test kernel kern_util kernel_hwdep context-demo 
 KERNEL_OBJS = $(KERNEL_MODULES:%=$(OBJDIR)/%.o)
 KERNEL = kernel.elf
 TOP = .

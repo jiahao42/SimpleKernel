@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include "kernel_hwdep.h"
 
+uint tick_counter;
+
 /*-------------------------------------------------------------------------*/
 /* uint set_isr( uint newCSR )  - Change interrupt ON/OFF                  */
 /*	ints ON/OFF on entry						   */
@@ -10,7 +12,6 @@
 /* Argument: New CSR							   */
 /* Returns: Old CSR							   */
 /*-------------------------------------------------------------------------*/
-
 unsigned int set_isr( unsigned int newCSR ) {
 	unsigned int oldCSR;
 	volatile unsigned int PSR;
@@ -47,4 +48,10 @@ See Prescale timer 8-9*/
 Activate interrupt globally. Bit 6, GIE=1, pp15-6*/
   rINTMSK = 0x100; 
   rSYSCON |= 0x40;
+}
+
+void TimerInt() {
+  tick_counter++;
+  tick_counter++;
+  tick_counter++;
 }

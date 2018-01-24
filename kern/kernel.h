@@ -23,8 +23,11 @@
 #define RUNNING 1
 #define INIT !RUNNING
 
+#if 0
 #define FAIL 0
 #define SUCCESS 1
+#endif
+
 #define OK 1
 
 #define DEADLINE_REACHED 0
@@ -34,10 +37,16 @@
 #define RECEIVER -1
 
 typedef enum {
+  fail = -1,
   success = 0,
 } exception;
 
 typedef int action;
+
+extern uint tick_counter;
+extern TCB *Running;
+extern TCB_list* ready_list;
+extern uint kernel_mode;
 
 struct l_obj; // Forward declaration
 
@@ -83,7 +92,7 @@ extern TCB *Running;
 extern TCB_list* ready_list;
 extern uint kernel_mode;
 
-int init_kernel(void);
+exception init_kernel(void);
 exception create_task(void (*body)(), uint d);
 void terminate(void);
 void run(void);
