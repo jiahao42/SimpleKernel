@@ -24,7 +24,9 @@ static const char* mem_alloc_fail = "Memory allocation failed!";
  * Utils *
  *********/
 
+#ifdef MEM_DEBUG
 static unsigned int mem_counter;
+#endif
 void* safe_malloc(unsigned int size);
 void safe_free(void* pt);
 
@@ -65,6 +67,10 @@ void list_prepend(list *t_list, listobj *node);
 void list_insert_after(list *t_list, listobj *pos, listobj *n_node);
 void list_insert_before(list *t_list, listobj *pos, listobj *n_node);
 void list_insert_by_ddl(list *t_list, listobj *n_node);
+void list_remove_head(list *t_list);
+void list_remove_tail(list *t_list);
+void list_remove(list *t_list, listobj *node);
+void list_remove_by_task(list *t_list, TCB* tcb);
 void destroy_list(list *t_list);
 
 
@@ -171,6 +177,48 @@ void list_insert_by_ddl(list *t_list, listobj *n_node) {
   }
 }
 
+void list_remove_head(list *t_list) {
+  listobj *node = t_list->pHead;
+  t_list->pHead = node->pNext; // could be NULL when there is only one node in this list
+  if (t_list->pHead == NULL) { // if the list is empty now
+    t_list->pTail = NULL;
+  } else {
+    t_list->pHead->pPrevious = NULL;
+  }
+  safe_free(node);
+}
+
+void list_remove_tail(list *t_list) {
+  listobj *node = t_list->pTail;
+  t_list->pTail = node->pPrevious; // could not be NULL here
+  t_list->pTail->pNext = NULL;
+  safe_free(node);
+}
+
+
+void list_remove(list *t_list, listobj *node) {
+  if (node == t_list->pHead) {
+    return list_remove_head(t_list);
+  } else if (node == t_list->pTail) {
+    return list_remove_tail(t_list);
+  } else {
+    node->pPrevious->pNext = node->pNext;
+    node->pNext->pPrevious = node->pPrevious;
+    safe_free(node);
+  }
+}
+
+void list_remove_by_task(list *t_list, TCB* tcb) {
+  listobj *cursor = t_list->pHead;
+  while (cursor != NULL) {
+    if (cursor->pTask == tcb) {
+      list_remove(t_list, cursor);
+      break;
+    } else {
+      cursor = cursor->pNext;
+    }
+  }
+}
 
 void destroy_list(list *t_list) {
   listobj *cursor = t_list->pHead;
@@ -213,6 +261,12 @@ int init_kernel();
 void idle();
 TCB* Running;
 
+/*
+This function initializes the kernel and its data
+structures and leaves the kernel in start-up mode. The
+init_kernel call must be made before any other call is
+made to the kernel.
+*/
 int init_kernel() {
   set_ticks(0);
   ready_list = create_list();
@@ -225,6 +279,7 @@ int init_kernel() {
   NULL_CHECKER(t_idle);
   t_idle->PC = idle;
   t_idle->SP = &(Running->StackSeg[STACK_SIZE-1]);
+  t_idle->DeadLine = 0xffffffff;
   kernel_mode = INIT;
   return kernel_status;
 }
@@ -237,6 +292,13 @@ void idle() {
   }
 }
 
+/*
+This function creates a task. If the call is made in startup
+mode, i.e. the kernel is not running, only the
+necessary data structures will be created. However, if
+the call is made in running mode, it will lead to a
+rescheduling and possibly a context switch.
+*/
 exception	create_task(void (* body)(), uint d) {
   uint first_execute = TRUE;
   TCB* tcb = create_TCB();
@@ -261,5 +323,32 @@ exception	create_task(void (* body)(), uint d) {
     }
   }
   return kernel_status;
+}
+
+/*
+This function starts the kernel and thus the system of
+created tasks. Since the call will start the kernel it will
+leave control to the task with tightest deadline.
+Therefore, it must be placed last in the application
+initialization code. After this call the system will be in
+running mode.
+*/
+void run() {
+  kernel_mode = RUNNING;
+  #ifdef texas_dsp
+  isr_on();
+  #endif
+  LoadContext();
+}
+
+/*
+This call will terminate the running task. All data
+structures for the task will be removed. Thereafter,
+another task will be scheduled for execution.
+*/
+void terminate() {
+  list_remove_by_task(ready_list, Running);
+  Running = ready_list->pHead->pTask;
+  LoadContext();
 }
 
