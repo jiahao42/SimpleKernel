@@ -69,8 +69,10 @@ void list_insert_before(list *t_list, listobj *pos, listobj *n_node);
 void list_insert_by_ddl(list *t_list, listobj *n_node);
 void list_remove_head(list *t_list);
 void list_remove_tail(list *t_list);
-void list_remove(list *t_list, listobj *node);
-void list_remove_by_task(list *t_list, TCB* tcb);
+void node_remove(list *t_list, listobj *node);
+void node_destroy_by_task(list *t_list, TCB* tcb);
+listobj* node_fetch_by_task(list *t_list, TCB *tcb);
+void node_transfer_list(list *src, list *dest, TCB* tcb);
 void destroy_list(list *t_list);
 
 
@@ -177,6 +179,10 @@ void list_insert_by_ddl(list *t_list, listobj *n_node) {
   }
 }
 
+/*
+remove the node from list,
+whether free the node is up to the caller
+*/
 void list_remove_head(list *t_list) {
   listobj *node = t_list->pHead;
   t_list->pHead = node->pNext; // could be NULL when there is only one node in this list
@@ -185,18 +191,16 @@ void list_remove_head(list *t_list) {
   } else {
     t_list->pHead->pPrevious = NULL;
   }
-  safe_free(node);
 }
 
 void list_remove_tail(list *t_list) {
   listobj *node = t_list->pTail;
   t_list->pTail = node->pPrevious; // could not be NULL here
   t_list->pTail->pNext = NULL;
-  safe_free(node);
 }
 
 
-void list_remove(list *t_list, listobj *node) {
+void node_remove(list *t_list, listobj *node) {
   if (node == t_list->pHead) {
     return list_remove_head(t_list);
   } else if (node == t_list->pTail) {
@@ -204,20 +208,41 @@ void list_remove(list *t_list, listobj *node) {
   } else {
     node->pPrevious->pNext = node->pNext;
     node->pNext->pPrevious = node->pPrevious;
-    safe_free(node);
   }
 }
 
-void list_remove_by_task(list *t_list, TCB* tcb) {
+/*
+Careful! This function will free node
+*/
+void node_destroy_by_task(list *t_list, TCB* tcb) {
   listobj *cursor = t_list->pHead;
   while (cursor != NULL) {
     if (cursor->pTask == tcb) {
-      list_remove(t_list, cursor);
+      node_remove(t_list, cursor);
+      safe_free(cursor);
       break;
     } else {
       cursor = cursor->pNext;
     }
   }
+}
+
+listobj* node_fetch_by_task(list *t_list, TCB *tcb) {
+  listobj *cursor = t_list->pHead;
+  while (cursor != NULL) {
+    if (cursor->pTask == tcb) {
+      return cursor;
+    } else {
+      cursor = cursor->pNext;
+    }
+  }
+  return NULL;
+}
+
+void node_transfer_list(list *src, list *dest, TCB* tcb) {
+  listobj *node = node_fetch_by_task(src, tcb);
+  node_remove(src, node);
+  list_insert_by_ddl(dest, node);
 }
 
 void destroy_list(list *t_list) {
@@ -233,33 +258,77 @@ void destroy_list(list *t_list) {
 /******************
  * Timer relevent *
  ******************/
+TCB* Running;
+static uint kernel_mode;
+static uint kernel_status;
+list* ready_list;
+list* waiting_list;
+list* timer_list;
 static uint tick_counter;
-void TimerInt (void)
-{
+
+exception	wait(uint nTicks);
+void set_ticks(uint no_of_ticks);
+uint ticks();
+uint deadline();
+void set_deadline(uint nNew);
+void TimerInt ();
+
+/*
+This call will block the calling task until the given
+number of ticks has expired.
+*/
+exception wait(uint nTicks) {
+#ifdef texas_dep
+  isr_off();
+#endif
+  uint first_execute = TRUE;
+  SaveContext();
+  if (first_execute == TRUE) {
+    first_execute = FALSE;
+    node_transfer_list(ready_list, timer_list, Running);
+    LoadContext();
+  } else {
+    //TODO deadline reached
+  }
+  return kernel_status;
+}
+
+void TimerInt (void) {
 
 }
-// exception	wait( uint nTicks );
+
 void  set_ticks( uint no_of_ticks ) {
   tick_counter = no_of_ticks;
 }
+
 uint  ticks( void ) {
   return tick_counter;
+}
+
+uint deadline() {
+  return Running->DeadLine;
+}
+
+void set_deadline(uint nNew) {
+  uint first_execute = TRUE;
+#ifdef texas_dep
+  isr_off();
+#endif
+  SaveContext();
+  if (first_execute == TRUE) {
+    first_execute = FALSE;
+    Running->DeadLine = nNew;
+    //TODO: reschedule readylist
+    LoadContext();
+  }
 }
 
 /******************************
  * Kernel task administration *
  ******************************/
 
-
-static uint kernel_mode;
-static uint kernel_status;
-list* ready_list;
-list* waiting_list;
-list* timer_list;
-
 int init_kernel();
 void idle();
-TCB* Running;
 
 /*
 This function initializes the kernel and its data
@@ -347,7 +416,7 @@ structures for the task will be removed. Thereafter,
 another task will be scheduled for execution.
 */
 void terminate() {
-  list_remove_by_task(ready_list, Running);
+  node_destroy_by_task(ready_list, Running);
   Running = ready_list->pHead->pTask;
   LoadContext();
 }
