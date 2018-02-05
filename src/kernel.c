@@ -61,6 +61,7 @@ void list_append(list *t_list, listobj *node);
 void list_prepend(list *t_list, listobj *node);
 void list_insert_after(list *t_list, listobj *pos, listobj *n_node);
 void list_insert_before(list *t_list, listobj *pos, listobj *n_node);
+void list_insert_by_ddl(list *t_list, listobj *n_node);
 void destroy_list(list *t_list);
 
 
@@ -148,6 +149,26 @@ void list_insert_before(list *t_list, listobj *pos, listobj *n_node) {
   pos->pPrevious = n_node;
 }
 
+void list_insert_by_ddl(list *t_list, listobj *n_node) {
+  if (t_list->pHead == NULL) { // empty list
+    list_append(t_list, n_node);
+  } else if (n_node->pTask->DeadLine < t_list->pHead->pTask->DeadLine) {
+    list_prepend(t_list, n_node);
+  } else if (n_node->pTask->DeadLine > t_list->pTail->pTask->DeadLine) {
+    list_append(t_list, n_node);
+  } else {
+    listobj *cursor = t_list->pHead->pNext;
+    while (cursor) {
+      if (n_node->pTask->DeadLine > cursor->pTask->DeadLine) {
+        list_append(t_list, n_node);
+        break;
+      }
+      cursor = cursor->pNext;
+    }
+  }
+}
+
+
 void destroy_list(list *t_list) {
   listobj *cursor = t_list->pHead;
   for (; t_list->pHead != NULL;) {
@@ -158,21 +179,35 @@ void destroy_list(list *t_list) {
   safe_free(t_list);
 }
 
+/******************
+ * Timer relevent *
+ ******************/
+void TimerInt (void)
+{
+
+}
+/******************************
+ * Kernel task administration *
+ ******************************/
+
 static uint tick_counter;
 static uint kernel_mode;
 static uint kernel_status;
-/* Kernel task administration */
+list* ready_list;
+list* waiting_list;
+list* timer_list;
+
 int init_kernel();
 void idle();
 TCB* Running;
 
 int init_kernel() {
   tick_counter = 0;
-  list* ready_list = create_list();
+  ready_list = create_list();
   NULL_CHECKER(ready_list);
-  list* waiting_list = create_list();
+  waiting_list = create_list();
   NULL_CHECKER(waiting_list);
-  list* timer_list = create_list();
+  timer_list = create_list();
   NULL_CHECKER(timer_list);
   TCB* t_idle = create_TCB();
   NULL_CHECKER(t_idle);
@@ -183,9 +218,30 @@ int init_kernel() {
 }
 
 void idle() {
-  while(1);
+  //TODO: add texas_dsp macro
+  while (1) {
+    tick_counter++;
+    TimerInt();
+  }
 }
 
 exception	create_task(void (* body)(), uint d) {
+  TCB* tcb = create_TCB();
+  NULL_CHECKER(tcb);
+  if (kernel_status != OK)
+    return kernel_status;
+  tcb->DeadLine = d;
+  tcb->PC = body;
+  tcb->SP = &(tcb->StackSeg[STACK_SIZE - 1]);
+  if (kernel_mode == INIT) {
+    list_insert_by_ddl(ready_list, create_listobj(tcb));
+    return kernel_status;
+  } else { // RUNNING
+    // TODO: disable interrupt
+    SaveContext();
+    if () {
 
+    }
+  }
+  
 }
