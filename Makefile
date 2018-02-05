@@ -3,8 +3,8 @@ CFLAGS = -O0 -g3 -Wall -mcpu=cortex-a8 -mthumb # -marm
 AS = arm-none-eabi-as
 ASFLAGS = -g3 -mcpu=cortex-a8
 OBJDIR = obj
-KERN = kern
-KERNEL_MODULES = context tcb test kernel kern_util kernel_hwdep context-demo 
+SRC = src
+KERNEL_MODULES = context test kernel
 KERNEL_OBJS = $(KERNEL_MODULES:%=$(OBJDIR)/%.o)
 KERNEL = kernel.elf
 TOP = .
@@ -14,13 +14,13 @@ all:	_clearscreen	$(KERNEL)
 $(KERNEL): $(KERNEL_OBJS)
 	$(CC) $(CFLAGS) --specs=nosys.specs -o $(KERNEL) $(KERNEL_OBJS)
 
-$(OBJDIR)/%.o: $(KERN)/%.c
+$(OBJDIR)/%.o: $(SRC)/%.c
 	@test -d $(OBJDIR) || mkdir $(OBJDIR)
 	$(CC) $(CFLAGS) -I $(TOP) -c -o $@ $<
 
-$(OBJDIR)/context.o: $(KERN)/context.S
+$(OBJDIR)/context.o: $(SRC)/context.S
 	@test -d $(OBJDIR) || mkdir $(OBJDIR)
-	$(AS) $(ASFLAGS) -c -o $(OBJDIR)/context.o $(KERN)/context.S
+	$(AS) $(ASFLAGS) -c -o $(OBJDIR)/context.o $(SRC)/context.S
 
 QEMU = qemu-system-arm
 # Use `qemu-system-arm -machine help -nographic` to check
