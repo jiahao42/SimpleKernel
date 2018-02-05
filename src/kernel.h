@@ -41,7 +41,7 @@
 typedef int             exception;
 typedef int             bool;
 typedef unsigned int    uint;
-typedef int 			action;
+typedef int 	        action;
 
 struct  l_obj;         // Forward declaration
 
@@ -58,11 +58,11 @@ typedef struct
 #else
 typedef struct
 {
-        uint    Context[CONTEXT_SIZE];        
+        uint    Context[CONTEXT_SIZE];   // For registers     
         uint    *SP;
         void    (*PC)();
         uint    SPSR;     
-        uint    StackSeg[STACK_SIZE];
+        uint    StackSeg[STACK_SIZE]; // For stack
         uint    DeadLine;
 } TCB;
 #endif
@@ -90,7 +90,7 @@ typedef struct {
 // Generic list item
 typedef struct l_obj {
          TCB            *pTask;
-         uint           nTCnt;
+         uint           nTCnt; // Ticks to wait
          msg            *pMessage;
          struct l_obj   *pPrevious;
          struct l_obj   *pNext;

@@ -2,6 +2,9 @@
 #include "string.h"
 #include "stdio.h"
 
+// TODO:
+// Turn off interrupts on memory handling (malloc/calloc/free is not reentrant). 
+
 #define OS_ERROR(e)  \
   if (e) { \
     do {  \
@@ -182,15 +185,24 @@ void destroy_list(list *t_list) {
 /******************
  * Timer relevent *
  ******************/
+static uint tick_counter;
 void TimerInt (void)
 {
 
 }
+// exception	wait( uint nTicks );
+void  set_ticks( uint no_of_ticks ) {
+  tick_counter = no_of_ticks;
+}
+uint  ticks( void ) {
+  return tick_counter;
+}
+
 /******************************
  * Kernel task administration *
  ******************************/
 
-static uint tick_counter;
+
 static uint kernel_mode;
 static uint kernel_status;
 list* ready_list;
@@ -202,7 +214,7 @@ void idle();
 TCB* Running;
 
 int init_kernel() {
-  tick_counter = 0;
+  set_ticks(0);
   ready_list = create_list();
   NULL_CHECKER(ready_list);
   waiting_list = create_list();
@@ -226,22 +238,28 @@ void idle() {
 }
 
 exception	create_task(void (* body)(), uint d) {
+  uint first_execute = TRUE;
   TCB* tcb = create_TCB();
   NULL_CHECKER(tcb);
   if (kernel_status != OK)
     return kernel_status;
-  tcb->DeadLine = d;
+  tcb->DeadLine = ticks() + d;
   tcb->PC = body;
   tcb->SP = &(tcb->StackSeg[STACK_SIZE - 1]);
   if (kernel_mode == INIT) {
     list_insert_by_ddl(ready_list, create_listobj(tcb));
     return kernel_status;
   } else { // RUNNING
-    // TODO: disable interrupt
+    #ifdef texas_dsp
+    isr_off(); // turn off interrupt
+    #endif
     SaveContext();
-    if () {
-
+    if (first_execute == TRUE) {
+      first_execute = FALSE;
+      list_insert_by_ddl(ready_list, create_listobj(tcb));
+      LoadContext();
     }
   }
-  
+  return kernel_status;
 }
+
