@@ -20,15 +20,14 @@ void internal_test_suite() {
 
 void test_tcb() {
   /* Init */
-  TCB dummy0, dummy1, dummy2, dummy3, dummy4, dummy5;
-  listobj *node0 = create_listobj(&dummy0);
-  listobj *node1 = create_listobj(&dummy1);
-  listobj *node2 = create_listobj(&dummy2);
-  listobj *node3 = create_listobj(&dummy3);
-  dummy4.DeadLine = 0x4444;
-  listobj *node4 = create_listobj(&dummy4);
-  dummy5.DeadLine = 0x5555;
-  listobj *node5 = create_listobj(&dummy5);
+  listobj *node0 = create_listobj(create_TCB());
+  listobj *node1 = create_listobj(create_TCB());
+  listobj *node2 = create_listobj(create_TCB());
+  listobj *node3 = create_listobj(create_TCB());
+  listobj *node4 = create_listobj(create_TCB());
+  node4->pTask->DeadLine = 0x4444;
+  listobj *node5 = create_listobj(create_TCB());
+  node5->pTask->DeadLine = 0x5555;
   list *tcb_list = create_list();
 
   /* Test begin */
@@ -58,10 +57,9 @@ void test_tcb() {
   EXPECT_EQ_TCB_NODE(node4, node3->pPrevious);
   EXPECT_EQ_TCB_NODE(node4, tcb_list->pHead);
 
-/*
+
   list_insert_by_ddl(tcb_list, node5); // node4 <--> [node5] <--> node3 <--> node0 <--> node1 <--> node2
   EXPECT_EQ_TCB_NODE(node4, node5->pPrevious);
   EXPECT_EQ_TCB_NODE(node5, node4->pNext);
   EXPECT_EQ_TCB_NODE(node4, tcb_list->pHead);
-  */
 }

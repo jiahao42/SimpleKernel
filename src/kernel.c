@@ -174,8 +174,8 @@ void list_insert_by_ddl(list *t_list, listobj *n_node) {
   } else {
     listobj *cursor = t_list->pHead->pNext;
     while (cursor) {
-      if (n_node->pTask->DeadLine > cursor->pTask->DeadLine) {
-        list_append(t_list, n_node);
+      if (n_node->pTask->DeadLine < cursor->pTask->DeadLine) {
+        list_insert_before(t_list, cursor, n_node);
         break;
       }
       cursor = cursor->pNext;
