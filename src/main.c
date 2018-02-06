@@ -7,7 +7,7 @@ void task1();
 
 int main()
 {
-  test_suite();
+  internal_test_suite();
   init_kernel();
   create_task(task1, 100);
   run();

@@ -4,7 +4,7 @@
 #include "kernel.h"
 
 void test_tcb();
-void test_suite();
+void internal_test_suite();
 extern TCB* create_TCB();
 extern void init_listobj(listobj *node, TCB *data);
 extern listobj *create_listobj(TCB *data);

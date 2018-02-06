@@ -86,6 +86,7 @@ TCB* create_TCB() {
   tcb->SPSR = 0;
   memset(tcb->Context, 0, sizeof(*tcb->Context) * CONTEXT_SIZE);
   memset(tcb->StackSeg, 0, sizeof(*tcb->StackSeg) * STACK_SIZE);
+  tcb->DeadLine = 0xffffffff;
   return tcb;
 }
 void init_listobj(listobj *node, TCB *data) {
