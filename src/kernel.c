@@ -26,7 +26,7 @@ static const char* mem_alloc_fail = "Memory allocation failed!";
  * Utils *
  *********/
 
-#define MEM_DEBUG
+// #define MEM_DEBUG
 
 #ifdef MEM_DEBUG
 static unsigned int mem_counter;
@@ -400,11 +400,6 @@ void idle() {
   while(1);
 #else
   while(1) {
-    #ifdef MEM_DEBUG
-    destroy_list(waiting_list);
-    destroy_list(ready_list);
-    destroy_list(timer_list);
-    #endif
     TimerInt();
   }
 #endif
@@ -470,5 +465,42 @@ void terminate() {
   Running = ready_list->pHead->pTask;
   LoadContext();
 }
+
+/*******
+ * IPC *
+ *******/
+
+mailbox* create_mailbox(uint nMessages, uint nDataSize);
+int no_messages(mailbox* mBox);
+exception remove_mailbox(mailbox* mBox);
+exception send_wait(mailbox* mBox, void* pData);
+exception receive_wait(mailbox* mBox, void* pData);
+exception	send_no_wait(mailbox* mBox, void* pData);
+int receive_no_wait(mailbox* mBox, void* pData);
+
+mailbox* create_mailbox(uint nMessages, uint nDataSize) {
+  mailbox* mb = safe_malloc(sizeof(mailbox));
+  mb->pHead = NULL;
+  mb->pTail = NULL;
+  mb->nDataSize = nDataSize;
+  mb->nMaxMessages = nMessages;
+  mb->nBlockedMsg = 0;
+  mb->nMessages = 0;
+  return mb;
+}
+
+int no_messages(mailbox* mBox) {
+  return mBox->nMessages == 0 ? TRUE : FALSE;
+}
+
+exception remove_mailbox(mailbox* mBox) {
+  if (no_messages(mBox)) {
+    safe_free(mBox);
+    return OK;
+  } else {
+    return NOT_EMPTY;
+  }
+}
+
 
 
