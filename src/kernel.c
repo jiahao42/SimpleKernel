@@ -399,9 +399,9 @@ void idle() {
 #ifdef texas_dep
   while(1);
 #else
-  while(1) {
-    TimerInt();
-  }
+  TimerInt();
+  Running = list_get_head_task(ready_list);
+  LoadContext();
 #endif
 }
 
