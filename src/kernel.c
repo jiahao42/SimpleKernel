@@ -26,6 +26,8 @@ static const char* mem_alloc_fail = "Memory allocation failed!";
  * Utils *
  *********/
 
+#define MEM_DEBUG
+
 #ifdef MEM_DEBUG
 static unsigned int mem_counter;
 #endif
@@ -104,6 +106,7 @@ listobj *create_listobj(TCB *data) {
 }
 
 void destroy_listobj(listobj *node) {
+  safe_free(node->pTask);
   safe_free(node);
   node->pNext = NULL;
   node->pPrevious = NULL;
@@ -227,7 +230,7 @@ void node_destroy_by_task(list *t_list, TCB* tcb) {
   while (cursor != NULL) {
     if (cursor->pTask == tcb) {
       node_remove(t_list, cursor);
-      safe_free(cursor);
+      destroy_listobj(cursor);
       break;
     } else {
       cursor = cursor->pNext;
@@ -256,6 +259,7 @@ void destroy_list(list *t_list) {
   listobj *cursor = t_list->pHead;
   for (; t_list->pHead != NULL;) {
     cursor = t_list->pHead;
+    safe_free(cursor->pTask);
     t_list->pHead = t_list->pHead->pNext;
     safe_free(cursor);
   }
@@ -396,6 +400,11 @@ void idle() {
   while(1);
 #else
   while(1) {
+    #ifdef MEM_DEBUG
+    destroy_list(waiting_list);
+    destroy_list(ready_list);
+    destroy_list(timer_list);
+    #endif
     TimerInt();
   }
 #endif
@@ -461,4 +470,5 @@ void terminate() {
   Running = ready_list->pHead->pTask;
   LoadContext();
 }
+
 

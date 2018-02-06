@@ -57,9 +57,10 @@ void test_tcb() {
   EXPECT_EQ_TCB_NODE(node4, node3->pPrevious);
   EXPECT_EQ_TCB_NODE(node4, tcb_list->pHead);
 
-
   list_insert_by_ddl(tcb_list, node5); // node4 <--> [node5] <--> node3 <--> node0 <--> node1 <--> node2
   EXPECT_EQ_TCB_NODE(node4, node5->pPrevious);
   EXPECT_EQ_TCB_NODE(node5, node4->pNext);
   EXPECT_EQ_TCB_NODE(node4, tcb_list->pHead);
+
+  destroy_list(tcb_list);
 }

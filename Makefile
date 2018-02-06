@@ -47,6 +47,9 @@ qemu-gdb: $(KERNEL) .gdbinit
 	@echo "***"
 	$(QEMU) $(QEMUOPTS) -S $(QEMUGDB)
 
+VFLAGS = --leak-check=full --log-file=qemu.log
+valgrind: $(KERNEL)
+	valgrind $(VFLAGS) $(QEMU) $(QEMUOPTS) -S $(QEMUGDB)
 .PHONY: clean _clearscreen
 
 clean:
