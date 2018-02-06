@@ -15,8 +15,10 @@
 static const char* mem_alloc_fail = "Memory allocation failed!";
 #define NULL_CHECKER(p) \
   if (p == NULL) { \
-    kernel_status = FAIL; \
-    OS_ERROR(mem_alloc_fail); \
+    do {\
+      kernel_status = FAIL; \
+      OS_ERROR(mem_alloc_fail); \
+    } while(0);\
   }
 
 
@@ -69,10 +71,11 @@ void list_insert_before(list *t_list, listobj *pos, listobj *n_node);
 void list_insert_by_ddl(list *t_list, listobj *n_node);
 void list_remove_head(list *t_list);
 void list_remove_tail(list *t_list);
+TCB* list_get_head_task(list *t_list);
 void node_remove(list *t_list, listobj *node);
 void node_destroy_by_task(list *t_list, TCB* tcb);
 listobj* node_fetch_by_task(list *t_list, TCB *tcb);
-void node_transfer_list(list *src, list *dest, TCB* tcb);
+void node_transfer_list(list *src, list *dest, listobj* node);
 void destroy_list(list *t_list);
 
 
@@ -199,6 +202,10 @@ void list_remove_tail(list *t_list) {
   t_list->pTail->pNext = NULL;
 }
 
+TCB* list_get_head_task(list *t_list) {
+  return t_list->pHead->pTask; 
+}
+
 
 void node_remove(list *t_list, listobj *node) {
   if (node == t_list->pHead) {
@@ -239,8 +246,7 @@ listobj* node_fetch_by_task(list *t_list, TCB *tcb) {
   return NULL;
 }
 
-void node_transfer_list(list *src, list *dest, TCB* tcb) {
-  listobj *node = node_fetch_by_task(src, tcb);
+void node_transfer_list(list *src, list *dest, listobj* node) {
   node_remove(src, node);
   list_insert_by_ddl(dest, node);
 }
@@ -285,15 +291,37 @@ exception wait(uint nTicks) {
   SaveContext();
   if (first_execute == TRUE) {
     first_execute = FALSE;
-    node_transfer_list(ready_list, timer_list, Running);
+    listobj *node = node_fetch_by_task(ready_list, Running);
+    node->nTCnt = nTicks;
+    node_transfer_list(ready_list, timer_list, node);
     LoadContext();
   } else {
-    //TODO deadline reached
+    if (ticks() > deadline()) {
+      kernel_status = DEADLINE_REACHED;
+    } else {
+      kernel_status = OK;
+    }
   }
   return kernel_status;
 }
 
+#define LIST_FOR_EACH(cur, list) \
+  for (listobj *item = list->pHead; item != list->pTail; item = cur->pNext)
+
 void TimerInt (void) {
+  tick_counter++;
+  LIST_FOR_EACH(item, timer_list) {
+    item->nTCnt--;
+    if (item->nTCnt == 0) {
+      node_transfer_list(timer_list, ready_list, item);
+    }
+  }
+  LIST_FOR_EACH(item, waiting_list) {
+    if (ticks() > deadline()) { // deadline expired
+      node_transfer_list(waiting_list, ready_list, item);
+    }
+    //TODO: clear mail entry
+  }
 
 }
 
@@ -318,7 +346,10 @@ void set_deadline(uint nNew) {
   if (first_execute == TRUE) {
     first_execute = FALSE;
     Running->DeadLine = nNew;
-    //TODO: reschedule readylist
+    // reschedule readylist
+    listobj *node = node_fetch_by_task(ready_list, Running);
+    node_remove(ready_list, node);
+    list_insert_by_ddl(ready_list, node);
     LoadContext();
   }
 }
@@ -329,6 +360,10 @@ void set_deadline(uint nNew) {
 
 int init_kernel();
 void idle();
+exception	create_task(void (* body)(), uint d);
+void run(void);
+void terminate(void);
+
 
 /*
 This function initializes the kernel and its data
@@ -337,6 +372,7 @@ init_kernel call must be made before any other call is
 made to the kernel.
 */
 int init_kernel() {
+  kernel_status = OK;
   set_ticks(0);
   ready_list = create_list();
   NULL_CHECKER(ready_list);
@@ -349,16 +385,19 @@ int init_kernel() {
   t_idle->PC = idle;
   t_idle->SP = &(Running->StackSeg[STACK_SIZE-1]);
   t_idle->DeadLine = 0xffffffff;
+  list_insert_by_ddl(ready_list, create_listobj(t_idle));
   kernel_mode = INIT;
   return kernel_status;
 }
 
 void idle() {
-  //TODO: add texas_dsp macro
-  while (1) {
-    tick_counter++;
+#ifdef texas_dep
+  while(1);
+#else
+  while(1) {
     TimerInt();
   }
+#endif
 }
 
 /*
@@ -404,6 +443,7 @@ running mode.
 */
 void run() {
   kernel_mode = RUNNING;
+  Running = list_get_head_task(ready_list);
   #ifdef texas_dsp
   isr_on();
   #endif

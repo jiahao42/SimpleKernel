@@ -1,5 +1,5 @@
 CC = arm-none-eabi-gcc
-CFLAGS = -O0 -g3 -Wall -mcpu=cortex-a8 -mthumb # -marm
+CFLAGS = -O0 -g3 -std=c99 -Wall -mcpu=cortex-a8 -mthumb # -marm
 AS = arm-none-eabi-as
 ASFLAGS = -g3 -mcpu=cortex-a8
 OBJDIR = obj

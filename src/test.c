@@ -4,10 +4,17 @@
 
 TCB *Running;
 
-void task1(void);
+void task1();
 
-int main(void)
+int main()
 {
   init_kernel();
+  create_task(task1, 100);
+  run();
 }
 
+void task1() {
+  int var1 = 0;
+  var1++;
+  terminate();
+}
