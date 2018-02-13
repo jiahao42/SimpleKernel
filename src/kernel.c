@@ -74,6 +74,8 @@ void list_insert_by_ddl(list *t_list, listobj *n_node);
 void list_remove_head(list *t_list);
 void list_remove_tail(list *t_list);
 TCB* list_get_head_task(list *t_list);
+listobj *list_get_head(list *t_list);
+uint if_node_in_list(list *l, listobj *node);
 void node_remove(list *t_list, listobj *node);
 void node_destroy_by_task(list *t_list, TCB* tcb);
 listobj* node_fetch_by_task(list *t_list, TCB *tcb);
@@ -210,6 +212,19 @@ TCB* list_get_head_task(list *t_list) {
   return t_list->pHead->pTask; 
 }
 
+listobj *list_get_head(list *t_list) {
+  return t_list->pHead;
+}
+
+uint if_node_in_list(list *l, listobj *node) {
+  listobj *cursor = l->pHead;
+  for (; cursor != NULL; cursor = cursor->pNext) {
+    if (cursor == node) {
+      return TRUE;
+    }
+  }
+  return FALSE;
+}
 
 void node_remove(list *t_list, listobj *node) {
   if (node == t_list->pHead) {
@@ -292,7 +307,7 @@ exception wait(uint nTicks) {
 #ifdef texas_dep
   isr_off();
 #endif
-  uint first_execute = TRUE;
+  volatile uint first_execute = TRUE;
   SaveContext();
   if (first_execute == TRUE) {
     first_execute = FALSE;
@@ -310,18 +325,18 @@ exception wait(uint nTicks) {
   return kernel_status;
 }
 
-#define LIST_FOR_EACH(cur, list) \
-  for (listobj *item = list->pHead; item != list->pTail; item = cur->pNext)
+#define LIST_FOR_EACH(list) \
+  for (listobj *item = list->pHead; item != list->pTail; item = item->pNext)
 
 void TimerInt (void) {
   tick_counter++;
-  LIST_FOR_EACH(item, timer_list) {
+  LIST_FOR_EACH(timer_list) {
     item->nTCnt--;
     if (item->nTCnt == 0) {
       node_transfer_list(timer_list, ready_list, item);
     }
   }
-  LIST_FOR_EACH(item, waiting_list) {
+  LIST_FOR_EACH(waiting_list) {
     if (ticks() > deadline()) { // deadline expired
       node_transfer_list(waiting_list, ready_list, item);
     }
@@ -343,7 +358,7 @@ uint deadline() {
 }
 
 void set_deadline(uint nNew) {
-  uint first_execute = TRUE;
+  volatile uint first_execute = TRUE;
 #ifdef texas_dep
   isr_off();
 #endif
@@ -413,7 +428,7 @@ the call is made in running mode, it will lead to a
 rescheduling and possibly a context switch.
 */
 exception	create_task(void (* body)(), uint d) {
-  uint first_execute = TRUE;
+  volatile uint first_execute = TRUE;
   TCB* tcb = create_TCB();
   NULL_CHECKER(tcb);
   if (kernel_status != OK)
@@ -466,6 +481,43 @@ void terminate() {
   LoadContext();
 }
 
+/************************
+ * Mailbox manipulation *
+ ************************/
+void mailbox_push_msg(mailbox* mBox, msg* m) {
+  if (mBox->nMessages == 0) { // init empty mailbox
+    m->pPrevious = NULL;
+    m->pNext = NULL;
+    mBox->pHead = m;
+    mBox->pTail = m;
+    mBox->nMessages = 1;
+  } else {
+    m->pPrevious = mBox->pTail;
+    m->pNext = NULL;
+    mBox->pTail->pNext = m;
+    mBox->pTail = m;
+    mBox->nMessages++;
+  }
+}
+
+msg* mailbox_pop_msg(mailbox *mBox) {
+  if (mBox->nMessages == 0) { // error: pop from empty mailbox
+    return NULL;
+  } else if (mBox->nMessages == 1) { // only 1 message
+    msg *m = mBox->pHead;
+    mBox->pHead = NULL;
+    mBox->pTail = NULL;
+    mBox->nMessages = 0;
+    return m;
+  } else {
+    msg *m = mBox->pTail;
+    mBox->pTail = mBox->pTail->pPrevious;
+    mBox->nMessages--;
+    return m;
+  }
+}
+
+
 /*******
  * IPC *
  *******/
@@ -502,5 +554,88 @@ exception remove_mailbox(mailbox* mBox) {
   }
 }
 
+exception send_wait(mailbox* mBox, void* pData) {
+  volatile uint first_execute = TRUE;
+  #ifdef texas_dsp
+  isr_off();
+  #endif
+  SaveContext();
+  if (first_execute == TRUE) {
+    first_execute = FALSE;
+    if (mBox->nBlockedMsg > 0 && mBox->pHead->Status == RECEIVER) {
+      msg *m = mailbox_pop_msg(mBox);
+      // m->pData = pData;
+      m->pData = malloc(mBox->nDataSize);
+      NULL_CHECKER(m->pData);
+      memcpy(m->pData, pData, mBox->nDataSize);
+      node_transfer_list(waiting_list, ready_list, m->pBlock);
+    } else { // if no task is waiting
+      msg *m = safe_malloc(sizeof(msg));
+      listobj *node = list_get_head(ready_list);
+      NULL_CHECKER(m);
+      node->pMessage = m;
+      m->Status = SENDER;
+      m->pData = pData;
+      m->pBlock = node;
+      mailbox_push_msg(mBox, m);
+      node_transfer_list(ready_list, waiting_list, node);
+      Running = list_get_head_task(ready_list);
+    }
+    LoadContext();
+  } else {
+    if (deadline() < ticks()) { // deadline reached
+      #ifdef texas_dsp
+      isr_off();
+      #endif
+      listobj *node = list_get_head(ready_list);
+      // TODO
+      safe_free(node->pMessage);
+      #ifdef texas_dsp
+      isr_on();
+      #endif
+      return DEADLINE_REACHED;
+    } else {
+      return OK;
+    }
+  }
+}
 
+exception receive_wait(mailbox* mBox, void* pData) {
+  volatile uint first_execution = TRUE;
+  #ifdef texas_dsp
+  isr_off();
+  #endif
+  SaveContext();
+  if (first_execution == TRUE) {
+    first_execution = FALSE;
+    if (mBox->nBlockedMsg > 0 && mBox->pHead->Status == SENDER) {
+      msg *m = mailbox_pop_msg(mBox);
+      NULL_CHECKER(m);
+      pData = malloc(mBox->nDataSize);
+      memcpy(pData, m->pData, mBox->nDataSize);
+      if (if_node_in_list(waiting_list, m->pBlock) == TRUE) {
+        node_transfer_list(waiting_list, ready_list, m->pBlock);
+      } else { // not wait type
+        safe_free(m->pData);
+      }
+    } else { // no msg waiting
+      msg *m = safe_malloc(sizeof(msg));
+      listobj *node = list_get_head(ready_list);
+      node->pMessage = m;
+      m->Status = RECEIVER;
+      m->pBlock = node;
+      node_transfer_list(ready_list, waiting_list, node);
+    }
+    LoadContext();
+  } else { // not first execution
+    if (deadline() < ticks()) {
+      #ifdef texas_dsp
+      isr_off();
+      #endif
+      listobj *node = list_get_head(ready_list);
+      node->pMessage = NULL;
+      // TODO
+    }
+  }
+}
 
