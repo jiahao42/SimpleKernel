@@ -18,11 +18,19 @@ extern void list_insert_by_ddl(list *t_list, listobj *n_node);
 extern void list_remove_head(list *t_list);
 extern void list_remove_tail(list *t_list);
 extern TCB* list_get_head_task(list *t_list);
+extern listobj *list_get_head(list *t_list);
+extern uint if_node_in_list(list *l, listobj *node);
 extern void node_remove(list *t_list, listobj *node);
 extern void node_destroy_by_task(list *t_list, TCB* tcb);
 extern listobj* node_fetch_by_task(list *t_list, TCB *tcb);
 extern void node_transfer_list(list *src, list *dest, listobj* node);
 extern void destroy_list(list *t_list);
+
+extern void mailbox_push_msg(mailbox* mBox, msg* m);
+extern msg* mailbox_pop_msg(mailbox *mBox);
+extern mailbox* create_mailbox(uint nMessages, uint nDataSize);
+extern int no_messages(mailbox* mBox);
+extern exception remove_mailbox(mailbox* mBox);
 
 extern int test_count;
 extern int test_pass;

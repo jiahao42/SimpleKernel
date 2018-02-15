@@ -28,9 +28,8 @@ static const char* mem_alloc_fail = "Memory allocation failed!";
 
 // #define MEM_DEBUG
 
-#ifdef MEM_DEBUG
 static unsigned int mem_counter;
-#endif
+
 void* safe_malloc(unsigned int size);
 void safe_free(void* pt);
 
@@ -39,19 +38,15 @@ void *safe_malloc(unsigned int size) {
   if (mem == NULL) {
     return NULL;
   } else {
-    #ifdef MEM_DEBUG
-      // printf("**** malloc[%d] ****\n", malloc_counter);
-      mem_counter++;      
-    #endif
+    // printf("**** malloc[%d] ****\n", malloc_counter);
+    mem_counter++;      
     return mem;
   }
 }
 
 void safe_free(void *pt) {
-  #ifdef MEM_DEBUG
     // printf("**** free[%d] ****\n", free_counter);
-    mem_counter--;
-  #endif
+  mem_counter--;
   free(pt);
   pt = NULL;
 }
@@ -484,20 +479,30 @@ void terminate() {
 /************************
  * Mailbox manipulation *
  ************************/
-void mailbox_push_msg(mailbox* mBox, msg* m) {
-  if (mBox->nMessages == 0) { // init empty mailbox
-    m->pPrevious = NULL;
-    m->pNext = NULL;
-    mBox->pHead = m;
-    mBox->pTail = m;
-    mBox->nMessages = 1;
+void mailbox_push_msg(mailbox* mBox, msg* m);
+msg* mailbox_pop_msg(mailbox *mBox);
+
+void mailbox_push_msg(mailbox* mBox, msg* m) { // TODO
+  if (m->Status == RECEIVER) {
+
   } else {
-    m->pPrevious = mBox->pTail;
-    m->pNext = NULL;
-    mBox->pTail->pNext = m;
-    mBox->pTail = m;
-    mBox->nMessages++;
+
   }
+  // if ((mBox->nMessages + mBox->nBlockedMsg) == 0) { // init empty mailbox
+  //   m->pPrevious = NULL;
+  //   m->pNext = NULL;
+  //   mBox->pHead = m;
+  //   mBox->pTail = m;
+  //   mBox->nMessages = 1;
+  // } else if (mBox->nMessages == mBox->nMaxMessages) { // when non-blocked mailbox is full, rewrite
+  //   //TODO: how do you define the oldest message?
+  // } else {
+  //   m->pPrevious = mBox->pTail;
+  //   m->pNext = NULL;
+  //   mBox->pTail->pNext = m;
+  //   mBox->pTail = m;
+  //   mBox->nMessages++;
+  // }
 }
 
 msg* mailbox_pop_msg(mailbox *mBox) {
