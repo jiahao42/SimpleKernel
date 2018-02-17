@@ -1,26 +1,26 @@
 #include "kernel.h"
-#include "string.h"
 #include "stdio.h"
+#include "string.h"
 
 // TODO:
-// Turn off interrupts on memory handling (malloc/calloc/free is not reentrant). 
+// Turn off interrupts on memory handling (malloc/calloc/free is not reentrant).
 
-#define OS_ERROR(e)  \
-  if (e) { \
-    do {  \
-      printf("OS-ERROR [%s] in file: (%s), on line: %d\n", e, __FILE__, __LINE__); \
-    } while (0); \
+#define OS_ERROR(e)                                                            \
+  if (e) {                                                                     \
+    do {                                                                       \
+      printf("OS-ERROR [%s] in file: (%s), on line: %d\n", e, __FILE__,        \
+             __LINE__);                                                        \
+    } while (0);                                                               \
   }
 
-static const char* mem_alloc_fail = "Memory allocation failed!";
-#define NULL_CHECKER(p) \
-  if (p == NULL) { \
-    do {\
-      kernel_status = FAIL; \
-      OS_ERROR(mem_alloc_fail); \
-    } while(0);\
+static const char *mem_alloc_fail = "Memory allocation failed!";
+#define NULL_CHECKER(p)                                                        \
+  if (p == NULL) {                                                             \
+    do {                                                                       \
+      kernel_status = FAIL;                                                    \
+      OS_ERROR(mem_alloc_fail);                                                \
+    } while (0);                                                               \
   }
-
 
 /*********
  * Utils *
@@ -30,8 +30,8 @@ static const char* mem_alloc_fail = "Memory allocation failed!";
 
 static unsigned int mem_counter;
 
-void* safe_malloc(unsigned int size);
-void safe_free(void* pt);
+void *safe_malloc(unsigned int size);
+void safe_free(void *pt);
 
 void *safe_malloc(unsigned int size) {
   void *mem = malloc(size);
@@ -39,24 +39,23 @@ void *safe_malloc(unsigned int size) {
     return NULL;
   } else {
     // printf("**** malloc[%d] ****\n", malloc_counter);
-    mem_counter++;      
+    mem_counter++;
     return mem;
   }
 }
 
 void safe_free(void *pt) {
-    // printf("**** free[%d] ****\n", free_counter);
+  // printf("**** free[%d] ****\n", free_counter);
   mem_counter--;
   free(pt);
   pt = NULL;
 }
 
-
 /*************************
  * TCB list manipulation *
  *************************/
 
-TCB* create_TCB();
+TCB *create_TCB();
 void init_listobj(listobj *node, TCB *data);
 listobj *create_listobj(TCB *data);
 void destroy_listobj(listobj *node);
@@ -68,18 +67,17 @@ void list_insert_before(list *t_list, listobj *pos, listobj *n_node);
 void list_insert_by_ddl(list *t_list, listobj *n_node);
 void list_remove_head(list *t_list);
 void list_remove_tail(list *t_list);
-TCB* list_get_head_task(list *t_list);
+TCB *list_get_head_task(list *t_list);
 listobj *list_get_head(list *t_list);
 uint if_node_in_list(list *l, listobj *node);
 void node_remove(list *t_list, listobj *node);
-void node_destroy_by_task(list *t_list, TCB* tcb);
-listobj* node_fetch_by_task(list *t_list, TCB *tcb);
-void node_transfer_list(list *src, list *dest, listobj* node);
+void node_destroy_by_task(list *t_list, TCB *tcb);
+listobj *node_fetch_by_task(list *t_list, TCB *tcb);
+void node_transfer_list(list *src, list *dest, listobj *node);
 void destroy_list(list *t_list);
 
-
-TCB* create_TCB() {
-  TCB* tcb = safe_malloc(sizeof(TCB));
+TCB *create_TCB() {
+  TCB *tcb = safe_malloc(sizeof(TCB));
   if (tcb == NULL)
     return NULL;
   tcb->SPSR = 0;
@@ -96,7 +94,7 @@ void init_listobj(listobj *node, TCB *data) {
 
 listobj *create_listobj(TCB *data) {
   listobj *node = (listobj *)safe_malloc(sizeof(listobj));
-  if (node == NULL) 
+  if (node == NULL)
     return NULL;
   init_listobj(node, data);
   return node;
@@ -189,7 +187,8 @@ whether free the node is up to the caller
 */
 void list_remove_head(list *t_list) {
   listobj *node = t_list->pHead;
-  t_list->pHead = node->pNext; // could be NULL when there is only one node in this list
+  t_list->pHead =
+      node->pNext; // could be NULL when there is only one node in this list
   if (t_list->pHead == NULL) { // if the list is empty now
     t_list->pTail = NULL;
   } else {
@@ -203,13 +202,9 @@ void list_remove_tail(list *t_list) {
   t_list->pTail->pNext = NULL;
 }
 
-TCB* list_get_head_task(list *t_list) {
-  return t_list->pHead->pTask; 
-}
+TCB *list_get_head_task(list *t_list) { return t_list->pHead->pTask; }
 
-listobj *list_get_head(list *t_list) {
-  return t_list->pHead;
-}
+listobj *list_get_head(list *t_list) { return t_list->pHead; }
 
 uint if_node_in_list(list *l, listobj *node) {
   listobj *cursor = l->pHead;
@@ -235,7 +230,7 @@ void node_remove(list *t_list, listobj *node) {
 /*
 Careful! This function will free node
 */
-void node_destroy_by_task(list *t_list, TCB* tcb) {
+void node_destroy_by_task(list *t_list, TCB *tcb) {
   listobj *cursor = t_list->pHead;
   while (cursor != NULL) {
     if (cursor->pTask == tcb) {
@@ -248,7 +243,7 @@ void node_destroy_by_task(list *t_list, TCB* tcb) {
   }
 }
 
-listobj* node_fetch_by_task(list *t_list, TCB *tcb) {
+listobj *node_fetch_by_task(list *t_list, TCB *tcb) {
   listobj *cursor = t_list->pHead;
   while (cursor != NULL) {
     if (cursor->pTask == tcb) {
@@ -260,7 +255,7 @@ listobj* node_fetch_by_task(list *t_list, TCB *tcb) {
   return NULL;
 }
 
-void node_transfer_list(list *src, list *dest, listobj* node) {
+void node_transfer_list(list *src, list *dest, listobj *node) {
   node_remove(src, node);
   list_insert_by_ddl(dest, node);
 }
@@ -279,20 +274,20 @@ void destroy_list(list *t_list) {
 /******************
  * Timer relevent *
  ******************/
-TCB* Running;
+TCB *Running;
 static uint kernel_mode;
 static uint kernel_status;
-list* ready_list;
-list* waiting_list;
-list* timer_list;
+list *ready_list;
+list *waiting_list;
+list *timer_list;
 static uint tick_counter;
 
-exception	wait(uint nTicks);
+exception wait(uint nTicks);
 void set_ticks(uint no_of_ticks);
 uint ticks();
 uint deadline();
 void set_deadline(uint nNew);
-void TimerInt ();
+void TimerInt();
 
 /*
 This call will block the calling task until the given
@@ -320,10 +315,10 @@ exception wait(uint nTicks) {
   return kernel_status;
 }
 
-#define LIST_FOR_EACH(list) \
+#define LIST_FOR_EACH(list)                                                    \
   for (listobj *item = list->pHead; item != list->pTail; item = item->pNext)
 
-void TimerInt (void) {
+void TimerInt(void) {
   tick_counter++;
   LIST_FOR_EACH(timer_list) {
     item->nTCnt--;
@@ -335,22 +330,15 @@ void TimerInt (void) {
     if (ticks() > deadline()) { // deadline expired
       node_transfer_list(waiting_list, ready_list, item);
     }
-    //TODO: clear mail entry
+    // TODO: clear mail entry
   }
-
 }
 
-void  set_ticks( uint no_of_ticks ) {
-  tick_counter = no_of_ticks;
-}
+void set_ticks(uint no_of_ticks) { tick_counter = no_of_ticks; }
 
-uint  ticks( void ) {
-  return tick_counter;
-}
+uint ticks(void) { return tick_counter; }
 
-uint deadline() {
-  return Running->DeadLine;
-}
+uint deadline() { return Running->DeadLine; }
 
 void set_deadline(uint nNew) {
   volatile uint first_execute = TRUE;
@@ -375,10 +363,9 @@ void set_deadline(uint nNew) {
 
 int init_kernel();
 void idle();
-exception	create_task(void (* body)(), uint d);
+exception create_task(void (*body)(), uint d);
 void run(void);
 void terminate(void);
-
 
 /*
 This function initializes the kernel and its data
@@ -395,10 +382,10 @@ int init_kernel() {
   NULL_CHECKER(waiting_list);
   timer_list = create_list();
   NULL_CHECKER(timer_list);
-  TCB* t_idle = create_TCB();
+  TCB *t_idle = create_TCB();
   NULL_CHECKER(t_idle);
   t_idle->PC = idle;
-  t_idle->SP = &(Running->StackSeg[STACK_SIZE-1]);
+  t_idle->SP = &(Running->StackSeg[STACK_SIZE - 1]);
   t_idle->DeadLine = 0xffffffff;
   list_insert_by_ddl(ready_list, create_listobj(t_idle));
   kernel_mode = INIT;
@@ -407,7 +394,8 @@ int init_kernel() {
 
 void idle() {
 #ifdef texas_dep
-  while(1);
+  while (1)
+    ;
 #else
   TimerInt();
   Running = list_get_head_task(ready_list);
@@ -422,9 +410,9 @@ necessary data structures will be created. However, if
 the call is made in running mode, it will lead to a
 rescheduling and possibly a context switch.
 */
-exception	create_task(void (* body)(), uint d) {
+exception create_task(void (*body)(), uint d) {
   volatile uint first_execute = TRUE;
-  TCB* tcb = create_TCB();
+  TCB *tcb = create_TCB();
   NULL_CHECKER(tcb);
   if (kernel_status != OK)
     return kernel_status;
@@ -435,9 +423,9 @@ exception	create_task(void (* body)(), uint d) {
     list_insert_by_ddl(ready_list, create_listobj(tcb));
     return kernel_status;
   } else { // RUNNING
-    #ifdef texas_dsp
+#ifdef texas_dsp
     isr_off(); // turn off interrupt
-    #endif
+#endif
     SaveContext();
     if (first_execute == TRUE) {
       first_execute = FALSE;
@@ -459,9 +447,9 @@ running mode.
 void run() {
   kernel_mode = RUNNING;
   Running = list_get_head_task(ready_list);
-  #ifdef texas_dsp
+#ifdef texas_dsp
   isr_on();
-  #endif
+#endif
   LoadContext();
 }
 
@@ -479,33 +467,64 @@ void terminate() {
 /************************
  * Mailbox manipulation *
  ************************/
-void mailbox_push_msg(mailbox* mBox, msg* m);
-msg* mailbox_pop_msg(mailbox *mBox);
+void mailbox_push_wait_msg(mailbox *mBox, msg *m);
+void mailbox_push_no_wait_msg(mailbox *mBox, msg *m);
+msg *mailbox_pop_wait_msg(mailbox *mBox);
+msg *mailbox_pop_no_wait_msg(mailbox *mBox);
 
-void mailbox_push_msg(mailbox* mBox, msg* m) { // TODO
-  if (m->Status == RECEIVER) {
-
+void mailbox_push_wait_msg(mailbox *mBox, msg *m) {
+  if (mBox->nBlockedMsg == 0) { // init empty mailbox
+    m->pPrevious = NULL;
+    m->pNext = NULL;
+    mBox->pHead = m;
+    mBox->pTail = m;
+    mBox->nBlockedMsg = 1;
   } else {
-
+    m->pPrevious = mBox->pTail;
+    m->pNext = NULL;
+    mBox->pTail->pNext = m;
+    mBox->pTail = m;
+    mBox->nBlockedMsg++;
   }
-  // if ((mBox->nMessages + mBox->nBlockedMsg) == 0) { // init empty mailbox
-  //   m->pPrevious = NULL;
-  //   m->pNext = NULL;
-  //   mBox->pHead = m;
-  //   mBox->pTail = m;
-  //   mBox->nMessages = 1;
-  // } else if (mBox->nMessages == mBox->nMaxMessages) { // when non-blocked mailbox is full, rewrite
-  //   //TODO: how do you define the oldest message?
-  // } else {
-  //   m->pPrevious = mBox->pTail;
-  //   m->pNext = NULL;
-  //   mBox->pTail->pNext = m;
-  //   mBox->pTail = m;
-  //   mBox->nMessages++;
-  // }
 }
 
-msg* mailbox_pop_msg(mailbox *mBox) {
+void mailbox_push_no_wait_msg(mailbox *mBox, msg *m) {
+  if (mBox->nMessages == 0) { // init empty mailbox
+    m->pPrevious = NULL;
+    m->pNext = NULL;
+    mBox->pHead = m;
+    mBox->pTail = m;
+    mBox->nMessages = 1;
+  } else if (mBox->nMessages == mBox->nMaxMessages) { // if mailbox is full
+    mailbox_pop_no_wait_msg(mBox); // remove the oldest msg
+    mailbox_push_no_wait_msg(mBox, m); // recursive :)
+  } else {
+    m->pPrevious = mBox->pTail;
+    m->pNext = NULL;
+    mBox->pTail->pNext = m;
+    mBox->pTail = m;
+    mBox->nMessages++;
+  }
+}
+
+msg *mailbox_pop_wait_msg(mailbox *mBox) {
+  if (mBox->nBlockedMsg == 0) { // error: pop from empty mailbox
+    return NULL;
+  } else if (mBox->nBlockedMsg == 1) { // only 1 message
+    msg *m = mBox->pHead;
+    mBox->pHead = NULL;
+    mBox->pTail = NULL;
+    mBox->nBlockedMsg = 0;
+    return m;
+  } else {
+    msg *m = mBox->pTail;
+    mBox->pTail = mBox->pTail->pPrevious;
+    mBox->nBlockedMsg--;
+    return m;
+  }
+}
+
+msg *mailbox_pop_no_wait_msg(mailbox *mBox) {
   if (mBox->nMessages == 0) { // error: pop from empty mailbox
     return NULL;
   } else if (mBox->nMessages == 1) { // only 1 message
@@ -522,21 +541,20 @@ msg* mailbox_pop_msg(mailbox *mBox) {
   }
 }
 
-
 /*******
  * IPC *
  *******/
 
-mailbox* create_mailbox(uint nMessages, uint nDataSize);
-int no_messages(mailbox* mBox);
-exception remove_mailbox(mailbox* mBox);
-exception send_wait(mailbox* mBox, void* pData);
-exception receive_wait(mailbox* mBox, void* pData);
-exception	send_no_wait(mailbox* mBox, void* pData);
-int receive_no_wait(mailbox* mBox, void* pData);
+mailbox *create_mailbox(uint nMessages, uint nDataSize);
+int no_messages(mailbox *mBox);
+exception remove_mailbox(mailbox *mBox);
+exception send_wait(mailbox *mBox, void *pData);
+exception receive_wait(mailbox *mBox, void *pData);
+exception send_no_wait(mailbox *mBox, void *pData);
+int receive_no_wait(mailbox *mBox, void *pData);
 
-mailbox* create_mailbox(uint nMessages, uint nDataSize) {
-  mailbox* mb = safe_malloc(sizeof(mailbox));
+mailbox *create_mailbox(uint nMessages, uint nDataSize) {
+  mailbox *mb = safe_malloc(sizeof(mailbox));
   mb->pHead = NULL;
   mb->pTail = NULL;
   mb->nDataSize = nDataSize;
@@ -546,11 +564,9 @@ mailbox* create_mailbox(uint nMessages, uint nDataSize) {
   return mb;
 }
 
-int no_messages(mailbox* mBox) {
-  return mBox->nMessages == 0 ? TRUE : FALSE;
-}
+int no_messages(mailbox *mBox) { return mBox->nMessages == 0 ? TRUE : FALSE; }
 
-exception remove_mailbox(mailbox* mBox) {
+exception remove_mailbox(mailbox *mBox) {
   if (no_messages(mBox)) {
     safe_free(mBox);
     return OK;
@@ -559,11 +575,11 @@ exception remove_mailbox(mailbox* mBox) {
   }
 }
 
-exception send_wait(mailbox* mBox, void* pData) {
+exception send_wait(mailbox *mBox, void *pData) {
   volatile uint first_execute = TRUE;
-  #ifdef texas_dsp
+#ifdef texas_dsp
   isr_off();
-  #endif
+#endif
   SaveContext();
   if (first_execute == TRUE) {
     first_execute = FALSE;
@@ -589,15 +605,15 @@ exception send_wait(mailbox* mBox, void* pData) {
     LoadContext();
   } else {
     if (deadline() < ticks()) { // deadline reached
-      #ifdef texas_dsp
+#ifdef texas_dsp
       isr_off();
-      #endif
+#endif
       listobj *node = list_get_head(ready_list);
       // TODO
       safe_free(node->pMessage);
-      #ifdef texas_dsp
+#ifdef texas_dsp
       isr_on();
-      #endif
+#endif
       return DEADLINE_REACHED;
     } else {
       return OK;
@@ -605,11 +621,11 @@ exception send_wait(mailbox* mBox, void* pData) {
   }
 }
 
-exception receive_wait(mailbox* mBox, void* pData) {
+exception receive_wait(mailbox *mBox, void *pData) {
   volatile uint first_execution = TRUE;
-  #ifdef texas_dsp
+#ifdef texas_dsp
   isr_off();
-  #endif
+#endif
   SaveContext();
   if (first_execution == TRUE) {
     first_execution = FALSE;
@@ -634,13 +650,12 @@ exception receive_wait(mailbox* mBox, void* pData) {
     LoadContext();
   } else { // not first execution
     if (deadline() < ticks()) {
-      #ifdef texas_dsp
+#ifdef texas_dsp
       isr_off();
-      #endif
+#endif
       listobj *node = list_get_head(ready_list);
       node->pMessage = NULL;
       // TODO
     }
   }
 }
-

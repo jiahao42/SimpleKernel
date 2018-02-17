@@ -81,10 +81,9 @@ typedef struct {
         msg             *pTail;
         int             nDataSize;
         int             nMaxMessages;
-        int             nMessages;
-        int             nBlockedMsg;
+        int             nMessages; // For no-wait messages
+        int             nBlockedMsg; // For wait messages
 } mailbox;
-
 
 // Generic list item
 typedef struct l_obj {
