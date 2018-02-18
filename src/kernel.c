@@ -5,6 +5,11 @@
 // TODO:
 // Turn off interrupts on memory handling (malloc/calloc/free is not reentrant).
 
+#ifndef texas_dsp
+void isr_off(void) {}
+void isr_on(void) {}
+#endif
+
 #define OS_ERROR(e)                                                            \
   if (e) {                                                                     \
     do {                                                                       \
@@ -294,9 +299,7 @@ This call will block the calling task until the given
 number of ticks has expired.
 */
 exception wait(uint nTicks) {
-#ifdef texas_dep
   isr_off();
-#endif
   volatile uint first_execute = TRUE;
   SaveContext();
   if (first_execute == TRUE) {
@@ -327,10 +330,10 @@ void TimerInt(void) {
     }
   }
   LIST_FOR_EACH(waiting_list) {
-    if (ticks() > deadline()) { // deadline expired
+    if (ticks() > item->pTask->DeadLine) { // deadline expired
       node_transfer_list(waiting_list, ready_list, item);
+      item->pMessage->pBlock = NULL; // TODO: clear mailbox entry
     }
-    // TODO: clear mail entry
   }
 }
 
@@ -342,9 +345,7 @@ uint deadline() { return Running->DeadLine; }
 
 void set_deadline(uint nNew) {
   volatile uint first_execute = TRUE;
-#ifdef texas_dep
   isr_off();
-#endif
   SaveContext();
   if (first_execute == TRUE) {
     first_execute = FALSE;
@@ -423,9 +424,7 @@ exception create_task(void (*body)(), uint d) {
     list_insert_by_ddl(ready_list, create_listobj(tcb));
     return kernel_status;
   } else { // RUNNING
-#ifdef texas_dsp
     isr_off(); // turn off interrupt
-#endif
     SaveContext();
     if (first_execute == TRUE) {
       first_execute = FALSE;
@@ -447,9 +446,7 @@ running mode.
 void run() {
   kernel_mode = RUNNING;
   Running = list_get_head_task(ready_list);
-#ifdef texas_dsp
   isr_on();
-#endif
   LoadContext();
 }
 
@@ -577,17 +574,18 @@ exception remove_mailbox(mailbox *mBox) {
 
 exception send_wait(mailbox *mBox, void *pData) {
   volatile uint first_execute = TRUE;
-#ifdef texas_dsp
   isr_off();
-#endif
   SaveContext();
   if (first_execute == TRUE) {
     first_execute = FALSE;
     if (mBox->nBlockedMsg > 0 && mBox->pHead->Status == RECEIVER) {
-      msg *m = mailbox_pop_msg(mBox);
+      msg *m = mailbox_pop_wait_msg(mBox);
       // m->pData = pData;
       m->pData = malloc(mBox->nDataSize);
       NULL_CHECKER(m->pData);
+      if (kernel_status == FAIL) {
+        return kernel_status;
+      }
       memcpy(m->pData, pData, mBox->nDataSize);
       node_transfer_list(waiting_list, ready_list, m->pBlock);
     } else { // if no task is waiting
@@ -598,22 +596,17 @@ exception send_wait(mailbox *mBox, void *pData) {
       m->Status = SENDER;
       m->pData = pData;
       m->pBlock = node;
-      mailbox_push_msg(mBox, m);
+      mailbox_push_wait_msg(mBox, m);
       node_transfer_list(ready_list, waiting_list, node);
       Running = list_get_head_task(ready_list);
     }
     LoadContext();
   } else {
     if (deadline() < ticks()) { // deadline reached
-#ifdef texas_dsp
       isr_off();
-#endif
-      listobj *node = list_get_head(ready_list);
-      // TODO
-      safe_free(node->pMessage);
-#ifdef texas_dsp
+      msg *m = mailbox_pop_wait_msg(mBox);
+      safe_free(m);
       isr_on();
-#endif
       return DEADLINE_REACHED;
     } else {
       return OK;
@@ -623,39 +616,86 @@ exception send_wait(mailbox *mBox, void *pData) {
 
 exception receive_wait(mailbox *mBox, void *pData) {
   volatile uint first_execution = TRUE;
-#ifdef texas_dsp
   isr_off();
-#endif
   SaveContext();
   if (first_execution == TRUE) {
     first_execution = FALSE;
-    if (mBox->nBlockedMsg > 0 && mBox->pHead->Status == SENDER) {
-      msg *m = mailbox_pop_msg(mBox);
-      NULL_CHECKER(m);
-      pData = malloc(mBox->nDataSize);
-      memcpy(pData, m->pData, mBox->nDataSize);
-      if (if_node_in_list(waiting_list, m->pBlock) == TRUE) {
-        node_transfer_list(waiting_list, ready_list, m->pBlock);
-      } else { // not wait type
-        safe_free(m->pData);
-      }
-    } else { // no msg waiting
+    // receive wait can access both wait msg and non-wait msg
+    if ((mBox->nMessages + mBox->nBlockedMsg) == 0) { // mailbox is empty
       msg *m = safe_malloc(sizeof(msg));
       listobj *node = list_get_head(ready_list);
       node->pMessage = m;
       m->Status = RECEIVER;
       m->pBlock = node;
       node_transfer_list(ready_list, waiting_list, node);
+    } else { // msg is waiting
+      uint wait_type = mBox->nBlockedMsg > 0 ? TRUE : FALSE; // is wait type?
+      if (wait_type) {
+        msg *m = mailbox_pop_wait_msg(mBox);
+        pData = malloc(mBox->nDataSize);
+        memcpy(pData, m->pData, mBox->nDataSize);
+        node_transfer_list(waiting_list, ready_list, m->pBlock);
+      } else { // no wait
+        msg *m = mailbox_pop_wait_msg(mBox);
+        pData = malloc(mBox->nDataSize);
+        memcpy(pData, m->pData, mBox->nDataSize);
+        safe_free(m->pData);
+      }
     }
     LoadContext();
   } else { // not first execution
     if (deadline() < ticks()) {
-#ifdef texas_dsp
       isr_off();
-#endif
-      listobj *node = list_get_head(ready_list);
-      node->pMessage = NULL;
-      // TODO
+      msg *m = mailbox_pop_no_wait_msg(mBox);
+      safe_free(m);
+      isr_on();
+      return DEADLINE_REACHED;
+    } else {
+      return OK;
     }
   }
+}
+
+exception send_no_wait(mailbox *mBox, void *pData) {
+  isr_off();
+  volatile uint first_execution = TRUE;
+  SaveContext();
+  if (first_execution == TRUE) {
+    first_execution = FALSE;
+    if (mBox->nMessages > 0 && mBox->pHead->Status == RECEIVER) { // receiving task is waiting
+      msg *m = mailbox_pop_no_wait_msg(mBox);
+      memcpy(m->pData, pData, mBox->nDataSize);
+      node_transfer_list(waiting_list, ready_list, m->pBlock);
+      LoadContext();
+    } else {
+      msg *m = safe_malloc(sizeof(msg));
+      memcpy(m->pData, pData, mBox->nDataSize);
+      m->Status = SENDER;
+      m->pBlock = list_get_head(ready_list);
+      mailbox_push_no_wait_msg(mBox, m);
+    }
+  }
+  return OK;
+}
+
+int receive_no_wait(mailbox *mBox, void *pData) {
+  volatile uint first_execution = TRUE;
+  int msg_status;
+  isr_off();
+  SaveContext();
+  if (first_execution == TRUE) {
+    if (mBox->nBlockedMsg > 0) { // wait type
+      msg *m = mailbox_pop_wait_msg(mBox);
+      msg_status = m->Status;
+      memcpy(pData, m->pData, mBox->nDataSize);
+      node_transfer_list(waiting_list, ready_list, list_get_head(ready_list));
+    } else if (mBox->nBlockedMsg > 0) { // non-wait type
+      msg *m = mailbox_pop_no_wait_msg(mBox);
+      msg_status = m->Status;
+      memcpy(pData, m->pData, mBox->nDataSize);
+      safe_free(m->pData);
+    }
+    LoadContext();
+  }
+  return msg_status;
 }
