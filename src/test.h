@@ -4,6 +4,7 @@
 #include "kernel.h"
 
 void test_tcb();
+void test_mailbox();
 void internal_test_suite();
 extern TCB* create_TCB();
 extern void init_listobj(listobj *node, TCB *data);

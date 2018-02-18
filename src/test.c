@@ -10,6 +10,7 @@ int main_ret = 0;
 
 void internal_test_suite() {
   test_tcb();
+  test_mailbox();
   printf("Kernel Test: %d/%d (%3.2f%%) passed\n", test_pass, test_count,
         test_pass * 100.0 / test_count);
 }
@@ -70,11 +71,42 @@ void test_tcb() {
 }
 
 void test_mailbox() {
-  mailbox *mb = create_mailbox(2, sizeof(int));
+  mailbox *mb = create_mailbox(2, sizeof(int)); // for wait msg
   msg m0;
-  mailbox_push_msg(mb, &m0);
+  m0.Status = SENDER;
+  msg m1;
+  m1.Status = RECEIVER;
+  mailbox_push_wait_msg(mb, &m0); // [m0]
   EXPECT_EQ_ADDR(&m0, mb->pHead);
   EXPECT_EQ_ADDR(&m0, mb->pTail);
-  mailbox_push_msg(mb, &m0);
+  EXPECT_EQ_INT(1, mb->nBlockedMsg);
+  mailbox_push_wait_msg(mb, &m1); // [m0] <--> [m1]
+  EXPECT_EQ_ADDR(&m0, mb->pHead);
+  EXPECT_EQ_ADDR(&m1, mb->pTail);
+  EXPECT_EQ_ADDR(&m1, m0.pNext);
+  EXPECT_EQ_ADDR(&m0, m1.pPrevious);
+  EXPECT_EQ_INT(2, mb->nBlockedMsg);
+  msg* pm0 = mailbox_pop_wait_msg(mb); // [m1]
+  EXPECT_EQ_ADDR(&m0, pm0);
+  EXPECT_EQ_ADDR(&m1, mb->pHead);
+  EXPECT_EQ_ADDR(&m1, mb->pTail);
+  EXPECT_EQ_INT(1, mb->nBlockedMsg);
+  msg* pm1 = mailbox_pop_wait_msg(mb); //
+  EXPECT_EQ_ADDR(&m1, pm1);
+  EXPECT_EQ_INT(0, mb->nBlockedMsg);
 
+  mailbox_push_no_wait_msg(mb, &m0); // [m0]
+  EXPECT_EQ_INT(1, mb->nMessages);
+  mailbox_push_no_wait_msg(mb, &m1); // [m0] <--> [m1]
+  EXPECT_EQ_INT(2, mb->nMessages);
+  msg m2;
+  // mailbox will be FULL! erase oldest msg
+  mailbox_push_no_wait_msg(mb, &m2); // m[1] <--> [m2]
+  EXPECT_EQ_INT(2, mb->nMessages);
+  pm1 = mailbox_pop_no_wait_msg(mb); // [m2]
+  EXPECT_EQ_ADDR(&m1, pm1);
+  EXPECT_EQ_INT(1, mb->nMessages);
+  msg* pm2 = mailbox_pop_no_wait_msg(mb); // 
+  EXPECT_EQ_ADDR(&m2, pm2);
+  EXPECT_EQ_INT(0, mb->nMessages);
 }

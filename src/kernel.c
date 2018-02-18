@@ -493,7 +493,9 @@ void mailbox_push_no_wait_msg(mailbox *mBox, msg *m) {
     mBox->pTail = m;
     mBox->nMessages = 1;
   } else if (mBox->nMessages == mBox->nMaxMessages) { // if mailbox is full
-    mailbox_pop_no_wait_msg(mBox); // remove the oldest msg
+    msg *old_msg = mailbox_pop_no_wait_msg(mBox); // remove the oldest msg
+    old_msg->pBlock->pMessage = NULL;
+    safe_free(old_msg);
     mailbox_push_no_wait_msg(mBox, m); // recursive :)
   } else {
     m->pPrevious = mBox->pTail;
@@ -513,9 +515,9 @@ msg *mailbox_pop_wait_msg(mailbox *mBox) {
     mBox->pTail = NULL;
     mBox->nBlockedMsg = 0;
     return m;
-  } else {
-    msg *m = mBox->pTail;
-    mBox->pTail = mBox->pTail->pPrevious;
+  } else { // return Head
+    msg *m = mBox->pHead;
+    mBox->pHead = mBox->pHead->pNext;
     mBox->nBlockedMsg--;
     return m;
   }
@@ -531,8 +533,8 @@ msg *mailbox_pop_no_wait_msg(mailbox *mBox) {
     mBox->nMessages = 0;
     return m;
   } else {
-    msg *m = mBox->pTail;
-    mBox->pTail = mBox->pTail->pPrevious;
+    msg *m = mBox->pHead;
+    mBox->pHead = mBox->pHead->pNext;
     mBox->nMessages--;
     return m;
   }
@@ -608,10 +610,9 @@ exception send_wait(mailbox *mBox, void *pData) {
       safe_free(m);
       isr_on();
       return DEADLINE_REACHED;
-    } else {
-      return OK;
     }
   }
+  return OK;
 }
 
 exception receive_wait(mailbox *mBox, void *pData) {
@@ -650,10 +651,9 @@ exception receive_wait(mailbox *mBox, void *pData) {
       safe_free(m);
       isr_on();
       return DEADLINE_REACHED;
-    } else {
-      return OK;
     }
   }
+  return OK;
 }
 
 exception send_no_wait(mailbox *mBox, void *pData) {
