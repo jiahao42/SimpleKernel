@@ -307,6 +307,7 @@ exception wait(uint nTicks) {
     listobj *node = node_fetch_by_task(ready_list, Running);
     node->nTCnt = nTicks;
     node_transfer_list(ready_list, timer_list, node);
+    Running = list_get_head_task(ready_list);
     LoadContext();
   } else {
     if (ticks() > deadline()) {
@@ -319,7 +320,7 @@ exception wait(uint nTicks) {
 }
 
 #define LIST_FOR_EACH(list)                                                    \
-  for (listobj *item = list->pHead; item != list->pTail; item = item->pNext)
+  for (listobj *item = list->pHead; item != NULL; item = item->pNext)
 
 void TimerInt(void) {
   tick_counter++;
@@ -563,7 +564,9 @@ mailbox *create_mailbox(uint nMessages, uint nDataSize) {
   return mb;
 }
 
-int no_messages(mailbox *mBox) { return mBox->nMessages == 0 ? TRUE : FALSE; }
+int no_messages(mailbox *mBox) { 
+  return (mBox->nMessages + mBox->nBlockedMsg) == 0 ? TRUE : FALSE; 
+}
 
 exception remove_mailbox(mailbox *mBox) {
   if (no_messages(mBox)) {
@@ -628,7 +631,9 @@ exception receive_wait(mailbox *mBox, void *pData) {
       node->pMessage = m;
       m->Status = RECEIVER;
       m->pBlock = node;
+      mailbox_push_wait_msg(mBox, m);
       node_transfer_list(ready_list, waiting_list, node);
+      Running = list_get_head_task(ready_list);
     } else { // msg is waiting
       uint wait_type = mBox->nBlockedMsg > 0 ? TRUE : FALSE; // is wait type?
       if (wait_type) {
