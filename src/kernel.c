@@ -3,7 +3,7 @@
 #include "string.h"
 
 // TODO:
-// Turn off interrupts on memory handling (malloc/calloc/free is not reentrant).
+// More tests, must test send_no_wait and receive_no_wait
 
 #ifndef texas_dsp
 void isr_off(void) {}
@@ -38,7 +38,9 @@ static unsigned int mem_counter;
 void *safe_malloc(unsigned int size);
 
 void *safe_malloc(unsigned int size) {
+  isr_off();
   void *mem = malloc(size);
+  isr_on();
   if (mem == NULL) {
     return NULL;
   } else {
@@ -51,7 +53,9 @@ void *safe_malloc(unsigned int size) {
 #define safe_free(p) \
   do { \
     void ** __p = (void**)(p); \
+    isr_off(); \
     free(*(__p)); \
+    isr_on(); \
     *(__p) = NULL; \
     mem_counter--; \
   } while (0)
@@ -281,6 +285,8 @@ void destroy_list(list *t_list) {
     t_list->pHead = t_list->pHead->pNext;
     safe_free(cursor);
   }
+  t_list->pHead = NULL;
+  t_list->pTail = NULL;
   safe_free(t_list);
 }
 
@@ -612,6 +618,7 @@ int receive_no_wait(mailbox *mBox, void *pData) {
       msg *m = mailbox_pop_no_wait_msg(mBox);
       msg_status = m->Status;
       memcpy(pData, m->pData, mBox->nDataSize);
+      safe_free(m->pData); // TODO
       m->pBlock->pMessage = NULL;
       safe_free(m);
     }
