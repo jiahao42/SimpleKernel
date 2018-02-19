@@ -125,6 +125,8 @@ void list_append(list *t_list, listobj *node) {
   if (t_list->pTail == NULL) {
     t_list->pHead = node;
     t_list->pTail = node;
+    node->pPrevious = NULL;
+    node->pNext = NULL;
   } else {
     t_list->pTail->pNext = node;
     node->pPrevious = t_list->pTail;
@@ -137,6 +139,8 @@ void list_prepend(list *t_list, listobj *node) {
   if (t_list->pHead == NULL) {
     t_list->pHead = node;
     t_list->pTail = node;
+    node->pPrevious = NULL;
+    node->pNext = NULL;
   } else {
     node->pPrevious = NULL;
     node->pNext = t_list->pHead;
@@ -203,8 +207,12 @@ void list_remove_head(list *t_list) {
 
 void list_remove_tail(list *t_list) {
   listobj *node = t_list->pTail;
-  t_list->pTail = node->pPrevious; // could not be NULL here
-  t_list->pTail->pNext = NULL;
+  t_list->pTail = node->pPrevious;
+  if (t_list->pTail == NULL) {
+    t_list->pHead = NULL;
+  } else {
+    t_list->pTail->pNext = NULL;
+  }
 }
 
 TCB *list_get_head_task(list *t_list) { return t_list->pHead->pTask; }

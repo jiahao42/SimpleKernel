@@ -1,6 +1,6 @@
 # LambKernel
 Course work for Computer System Engineering II  
-It's the course requirement to write everything in one file, `kernel.c`. :)
+It's the course requirement to write everything in one file, `kernel.c` :)
 
 ## Prerequisite on macOS
 
