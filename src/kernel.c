@@ -122,7 +122,7 @@ list *create_list() {
 }
 
 void list_append(list *t_list, listobj *node) {
-  if (t_list->pTail == NULL) {
+  if (t_list->pTail == NULL) { // if the list is empty
     t_list->pHead = node;
     t_list->pTail = node;
     node->pPrevious = NULL;
@@ -136,7 +136,7 @@ void list_append(list *t_list, listobj *node) {
 }
 
 void list_prepend(list *t_list, listobj *node) {
-  if (t_list->pHead == NULL) {
+  if (t_list->pHead == NULL) { // if the list is empty
     t_list->pHead = node;
     t_list->pTail = node;
     node->pPrevious = NULL;
@@ -593,12 +593,11 @@ exception send_wait(mailbox *mBox, void *pData) {
     first_execute = FALSE;
     if (mBox->nBlockedMsg > 0 && mBox->pHead->Status == RECEIVER) {
       msg *m = mailbox_pop_wait_msg(mBox);
-      // m->pData = pData;
-      m->pData = malloc(mBox->nDataSize);
-      NULL_CHECKER(m->pData);
-      if (kernel_status == FAIL) {
-        return kernel_status;
-      }
+      // m->pData = malloc(mBox->nDataSize);
+      // NULL_CHECKER(m->pData);
+      // if (kernel_status == FAIL) {
+      //   return kernel_status;
+      // }
       memcpy(m->pData, pData, mBox->nDataSize);
       node_transfer_list(waiting_list, ready_list, m->pBlock);
     } else { // if no task is waiting
@@ -639,6 +638,7 @@ exception receive_wait(mailbox *mBox, void *pData) {
       node->pMessage = m;
       m->Status = RECEIVER;
       m->pBlock = node;
+      m->pData = pData;
       mailbox_push_wait_msg(mBox, m);
       node_transfer_list(ready_list, waiting_list, node);
       Running = list_get_head_task(ready_list);
@@ -646,12 +646,12 @@ exception receive_wait(mailbox *mBox, void *pData) {
       uint wait_type = mBox->nBlockedMsg > 0 ? TRUE : FALSE; // is wait type?
       if (wait_type) {
         msg *m = mailbox_pop_wait_msg(mBox);
-        pData = malloc(mBox->nDataSize);
+        // pData = safe_malloc(mBox->nDataSize);
         memcpy(pData, m->pData, mBox->nDataSize);
         node_transfer_list(waiting_list, ready_list, m->pBlock);
       } else { // no wait
         msg *m = mailbox_pop_wait_msg(mBox);
-        pData = malloc(mBox->nDataSize);
+        // pData = safe_malloc(mBox->nDataSize);
         memcpy(pData, m->pData, mBox->nDataSize);
         safe_free(m->pData);
       }
