@@ -36,7 +36,6 @@ static const char *mem_alloc_fail = "Memory allocation failed!";
 static unsigned int mem_counter;
 
 void *safe_malloc(unsigned int size);
-void safe_free(void *pt);
 
 void *safe_malloc(unsigned int size) {
   void *mem = malloc(size);
@@ -49,12 +48,13 @@ void *safe_malloc(unsigned int size) {
   }
 }
 
-void safe_free(void *pt) {
-  // printf("**** free[%d] ****\n", free_counter);
-  mem_counter--;
-  free(pt);
-  pt = NULL;
-}
+#define safe_free(p) \
+  do { \
+    void ** __p = (void**)(p); \
+    free(*(__p)); \
+    *(__p) = NULL; \
+    mem_counter--; \
+  } while (0)
 
 /*************************
  * TCB list manipulation *
@@ -367,109 +367,6 @@ void set_deadline(uint nNew) {
   }
 }
 
-/******************************
- * Kernel task administration *
- ******************************/
-
-int init_kernel();
-void idle();
-exception create_task(void (*body)(), uint d);
-void run(void);
-void terminate(void);
-
-/*
-This function initializes the kernel and its data
-structures and leaves the kernel in start-up mode. The
-init_kernel call must be made before any other call is
-made to the kernel.
-*/
-int init_kernel() {
-  kernel_status = OK;
-  set_ticks(0);
-  ready_list = create_list();
-  NULL_CHECKER(ready_list);
-  waiting_list = create_list();
-  NULL_CHECKER(waiting_list);
-  timer_list = create_list();
-  NULL_CHECKER(timer_list);
-  TCB *t_idle = create_TCB();
-  NULL_CHECKER(t_idle);
-  t_idle->PC = idle;
-  t_idle->SP = &(Running->StackSeg[STACK_SIZE - 1]);
-  t_idle->DeadLine = 0xffffffff;
-  list_insert_by_ddl(ready_list, create_listobj(t_idle));
-  kernel_mode = INIT;
-  return kernel_status;
-}
-
-void idle() {
-#ifdef texas_dep
-  while (1)
-    ;
-#else
-  TimerInt();
-  Running = list_get_head_task(ready_list);
-  LoadContext();
-#endif
-}
-
-/*
-This function creates a task. If the call is made in startup
-mode, i.e. the kernel is not running, only the
-necessary data structures will be created. However, if
-the call is made in running mode, it will lead to a
-rescheduling and possibly a context switch.
-*/
-exception create_task(void (*body)(), uint d) {
-  volatile uint first_execute = TRUE;
-  TCB *tcb = create_TCB();
-  NULL_CHECKER(tcb);
-  if (kernel_status != OK)
-    return kernel_status;
-  tcb->DeadLine = ticks() + d;
-  tcb->PC = body;
-  tcb->SP = &(tcb->StackSeg[STACK_SIZE - 1]);
-  if (kernel_mode == INIT) {
-    list_insert_by_ddl(ready_list, create_listobj(tcb));
-    return kernel_status;
-  } else { // RUNNING
-    isr_off(); // turn off interrupt
-    SaveContext();
-    if (first_execute == TRUE) {
-      first_execute = FALSE;
-      list_insert_by_ddl(ready_list, create_listobj(tcb));
-      LoadContext();
-    }
-  }
-  return kernel_status;
-}
-
-/*
-This function starts the kernel and thus the system of
-created tasks. Since the call will start the kernel it will
-leave control to the task with tightest deadline.
-Therefore, it must be placed last in the application
-initialization code. After this call the system will be in
-running mode.
-*/
-void run() {
-  kernel_mode = RUNNING;
-  Running = list_get_head_task(ready_list);
-  isr_on();
-  LoadContext();
-}
-
-/*
-This call will terminate the running task. All data
-structures for the task will be removed. Thereafter,
-another task will be scheduled for execution.
-*/
-void terminate() {
-  node_destroy_by_task(ready_list, Running);
-  Running = ready_list->pHead->pTask;
-  LoadContext();
-}
-
 /************************
  * Mailbox manipulation *
  ************************/
@@ -591,15 +488,14 @@ exception send_wait(mailbox *mBox, void *pData) {
   SaveContext();
   if (first_execute == TRUE) {
     first_execute = FALSE;
-    if (mBox->nBlockedMsg > 0 && mBox->pHead->Status == RECEIVER) {
+    if (mBox->nBlockedMsg > 0 && mBox->pHead->Status == RECEIVER) { // is waiting
       msg *m = mailbox_pop_wait_msg(mBox);
-      // m->pData = malloc(mBox->nDataSize);
-      // NULL_CHECKER(m->pData);
-      // if (kernel_status == FAIL) {
-      //   return kernel_status;
-      // }
+      // receiver has the duty to malloc data storage
       memcpy(m->pData, pData, mBox->nDataSize);
-      node_transfer_list(waiting_list, ready_list, m->pBlock);
+      listobj *node = m->pBlock;
+      m->pBlock->pMessage = NULL;
+      safe_free(m);
+      node_transfer_list(waiting_list, ready_list, node);
     } else { // if no task is waiting
       msg *m = safe_malloc(sizeof(msg));
       listobj *node = list_get_head(ready_list);
@@ -646,14 +542,18 @@ exception receive_wait(mailbox *mBox, void *pData) {
       uint wait_type = mBox->nBlockedMsg > 0 ? TRUE : FALSE; // is wait type?
       if (wait_type) {
         msg *m = mailbox_pop_wait_msg(mBox);
-        // pData = safe_malloc(mBox->nDataSize);
+        // receiver has the duty to malloc data storage
         memcpy(pData, m->pData, mBox->nDataSize);
-        node_transfer_list(waiting_list, ready_list, m->pBlock);
+        listobj *node = m->pBlock;
+        m->pBlock->pMessage = NULL;
+        safe_free(m);
+        node_transfer_list(waiting_list, ready_list, node);
       } else { // no wait
         msg *m = mailbox_pop_wait_msg(mBox);
-        // pData = safe_malloc(mBox->nDataSize);
+        // receiver has the duty to malloc data storage
+        m->pBlock->pMessage = NULL;
+        safe_free(m);
         memcpy(pData, m->pData, mBox->nDataSize);
-        safe_free(m->pData);
       }
     }
     LoadContext();
@@ -661,6 +561,7 @@ exception receive_wait(mailbox *mBox, void *pData) {
     if (deadline() < ticks()) {
       isr_off();
       msg *m = mailbox_pop_no_wait_msg(mBox);
+      m->pBlock->pMessage = NULL;
       safe_free(m);
       isr_on();
       return DEADLINE_REACHED;
@@ -678,7 +579,10 @@ exception send_no_wait(mailbox *mBox, void *pData) {
     if (mBox->nMessages > 0 && mBox->pHead->Status == RECEIVER) { // receiving task is waiting
       msg *m = mailbox_pop_no_wait_msg(mBox);
       memcpy(m->pData, pData, mBox->nDataSize);
-      node_transfer_list(waiting_list, ready_list, m->pBlock);
+      listobj *node = m->pBlock;
+      m->pBlock->pMessage = NULL;
+      safe_free(m);
+      node_transfer_list(waiting_list, ready_list, node);
       LoadContext();
     } else {
       msg *m = safe_malloc(sizeof(msg));
@@ -701,14 +605,128 @@ int receive_no_wait(mailbox *mBox, void *pData) {
       msg *m = mailbox_pop_wait_msg(mBox);
       msg_status = m->Status;
       memcpy(pData, m->pData, mBox->nDataSize);
+      m->pBlock->pMessage = NULL;
+      safe_free(m);
       node_transfer_list(waiting_list, ready_list, list_get_head(ready_list));
     } else if (mBox->nBlockedMsg > 0) { // non-wait type
       msg *m = mailbox_pop_no_wait_msg(mBox);
       msg_status = m->Status;
       memcpy(pData, m->pData, mBox->nDataSize);
-      safe_free(m->pData);
+      m->pBlock->pMessage = NULL;
+      safe_free(m);
     }
     LoadContext();
   }
   return msg_status;
+}
+
+/******************************
+ * Kernel task administration *
+ ******************************/
+
+int init_kernel();
+void idle();
+exception create_task(void (*body)(), uint d);
+void run(void);
+void terminate(void);
+
+/*
+This function initializes the kernel and its data
+structures and leaves the kernel in start-up mode. The
+init_kernel call must be made before any other call is
+made to the kernel.
+*/
+int init_kernel() {
+  kernel_status = OK;
+  set_ticks(0);
+  ready_list = create_list();
+  NULL_CHECKER(ready_list);
+  waiting_list = create_list();
+  NULL_CHECKER(waiting_list);
+  timer_list = create_list();
+  NULL_CHECKER(timer_list);
+  TCB *t_idle = create_TCB();
+  NULL_CHECKER(t_idle);
+  t_idle->PC = idle;
+  t_idle->SP = &(Running->StackSeg[STACK_SIZE - 1]);
+  t_idle->DeadLine = 0xffffffff;
+  list_insert_by_ddl(ready_list, create_listobj(t_idle));
+  kernel_mode = INIT;
+  return kernel_status;
+}
+
+extern mailbox *mb;
+void idle() {
+#ifdef texas_dep
+  while (1)
+    ;
+#else
+  TimerInt();
+  Running = list_get_head_task(ready_list);
+  if (tick_counter > 10000) {
+    destroy_list(ready_list);
+    destroy_list(waiting_list);
+    destroy_list(timer_list);
+    remove_mailbox(mb);
+    while(1);
+  }
+  LoadContext();
+#endif
+}
+
+/*
+This function creates a task. If the call is made in startup
+mode, i.e. the kernel is not running, only the
+necessary data structures will be created. However, if
+the call is made in running mode, it will lead to a
+rescheduling and possibly a context switch.
+*/
+exception create_task(void (*body)(), uint d) {
+  volatile uint first_execute = TRUE;
+  TCB *tcb = create_TCB();
+  NULL_CHECKER(tcb);
+  if (kernel_status != OK)
+    return kernel_status;
+  tcb->DeadLine = ticks() + d;
+  tcb->PC = body;
+  tcb->SP = &(tcb->StackSeg[STACK_SIZE - 1]);
+  if (kernel_mode == INIT) {
+    list_insert_by_ddl(ready_list, create_listobj(tcb));
+    return kernel_status;
+  } else { // RUNNING
+    isr_off(); // turn off interrupt
+    SaveContext();
+    if (first_execute == TRUE) {
+      first_execute = FALSE;
+      list_insert_by_ddl(ready_list, create_listobj(tcb));
+      LoadContext();
+    }
+  }
+  return kernel_status;
+}
+
+/*
+This function starts the kernel and thus the system of
+created tasks. Since the call will start the kernel it will
+leave control to the task with tightest deadline.
+Therefore, it must be placed last in the application
+initialization code. After this call the system will be in
+running mode.
+*/
+void run() {
+  kernel_mode = RUNNING;
+  Running = list_get_head_task(ready_list);
+  isr_on();
+  LoadContext();
+}
+
+/*
+This call will terminate the running task. All data
+structures for the task will be removed. Thereafter,
+another task will be scheduled for execution.
+*/
+void terminate() {
+  node_destroy_by_task(ready_list, Running);
+  Running = ready_list->pHead->pTask;
+  LoadContext();
 }
