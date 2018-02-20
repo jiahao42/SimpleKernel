@@ -478,7 +478,7 @@ mailbox *create_mailbox(uint nMessages, uint nDataSize) {
 int no_messages(mailbox *mBox) { return mBox->nMessages + mBox->nBlockedMsg; }
 
 exception remove_mailbox(mailbox *mBox) {
-  if (no_messages(mBox)) {
+  if (no_messages(mBox) == 0) {
     safe_free(mBox);
     return OK;
   } else {
@@ -608,19 +608,22 @@ int receive_no_wait(mailbox *mBox, void *pData) {
   isr_off();
   SaveContext();
   if (first_execution == TRUE) {
+    first_execution = FALSE;
     if (mBox->nBlockedMsg > 0) { // wait type
       msg *m = mailbox_pop_wait_msg(mBox);
       msg_status = m->Status;
       memcpy(pData, m->pData, mBox->nDataSize);
       m->pBlock->pMessage = NULL;
+      node_transfer_list(waiting_list, ready_list, m->pBlock);
+      // DON'T RESCHEDULE HERE
       safe_free(m);
-      node_transfer_list(waiting_list, ready_list, list_get_head(ready_list));
-    } else if (mBox->nBlockedMsg > 0) { // non-wait type
+    } else if (mBox->nMessages > 0) { // non-wait type
       msg *m = mailbox_pop_no_wait_msg(mBox);
       msg_status = m->Status;
       memcpy(pData, m->pData, mBox->nDataSize);
       safe_free(m->pData); // TODO
       m->pBlock->pMessage = NULL;
+      // DON'T RESCHEDULE HERE
       safe_free(m);
     }
     LoadContext();
