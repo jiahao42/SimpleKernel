@@ -31,9 +31,6 @@ extern void mailbox_push_wait_msg(mailbox *mBox, msg *m);
 extern void mailbox_push_no_wait_msg(mailbox *mBox, msg *m);
 extern msg *mailbox_pop_wait_msg(mailbox *mBox);
 extern msg *mailbox_pop_no_wait_msg(mailbox *mBox);
-extern mailbox* create_mailbox(uint nMessages, uint nDataSize);
-extern int no_messages(mailbox* mBox);
-extern exception remove_mailbox(mailbox* mBox);
 
 extern int test_count;
 extern int test_pass;

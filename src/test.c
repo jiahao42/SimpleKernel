@@ -110,3 +110,4 @@ void test_mailbox() {
   EXPECT_EQ_ADDR(&m2, pm2);
   EXPECT_EQ_INT(0, mb->nMessages);
 }
+

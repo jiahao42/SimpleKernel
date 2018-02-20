@@ -41,7 +41,7 @@ int main(void) {
 void task1(void) {
   volatile int nData_t1 = TEST_PATTERN_1;
   wait(10); /* task2 börjar köra */
-  if (no_messages(mb) == TRUE)
+  if (no_messages(mb) != 1)
     terminate(); /* ERROR */
   if (send_wait(mb, &nData_t1) == DEADLINE_REACHED)
     terminate(); /* ERROR */
@@ -53,7 +53,7 @@ void task1(void) {
   wait(10);      /* task2 börjar köra */
   /* start test 3 */
   if (send_wait(mb, &nData_t1) == DEADLINE_REACHED) {
-    if (no_messages(mb) == FALSE)
+    if (no_messages(mb) != 0)
       terminate(); /* ERROR */
     nTest3 = 1;
     if (nTest1 * nTest2 * nTest3) {
@@ -70,17 +70,17 @@ void task2(void) {
   volatile int nData_t2 = 0;
   if (receive_wait(mb, &nData_t2) == DEADLINE_REACHED) /* t1 kör nu */
     terminate();                                       /* ERROR */
-  if (no_messages(mb) == FALSE)
+  if (no_messages(mb) != 0)
     terminate(); /* ERROR */
   if (nData_t2 == TEST_PATTERN_1)
     nTest1 = 1;
   wait(20); /* t1 kör nu */
   /* start test 2 */
-  if (no_messages(mb) == TRUE)
+  if (no_messages(mb) != 1)
     terminate();                                       /* ERROR */
   if (receive_wait(mb, &nData_t2) == DEADLINE_REACHED) /* t1 kör nu */
     terminate();                                       /* ERROR */
-  if (no_messages(mb) == FALSE)
+  if (no_messages(mb) != 0)
     terminate(); /* ERROR */
   if (nData_t2 == TEST_PATTERN_2)
     nTest2 = 1;

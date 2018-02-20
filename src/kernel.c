@@ -50,14 +50,14 @@ void *safe_malloc(unsigned int size) {
   }
 }
 
-#define safe_free(p) \
-  do { \
-    void ** __p = (void**)(p); \
-    isr_off(); \
-    free(*(__p)); \
-    isr_on(); \
-    *(__p) = NULL; \
-    mem_counter--; \
+#define safe_free(p)                                                           \
+  do {                                                                         \
+    void **__p = (void **)(p);                                                 \
+    isr_off();                                                                 \
+    free(*(__p));                                                              \
+    isr_on();                                                                  \
+    *(__p) = NULL;                                                             \
+    mem_counter--;                                                             \
   } while (0)
 
 /*************************
@@ -405,7 +405,7 @@ void mailbox_push_no_wait_msg(mailbox *mBox, msg *m) {
     mBox->pTail = m;
     mBox->nMessages = 1;
   } else if (mBox->nMessages == mBox->nMaxMessages) { // if mailbox is full
-    msg *old_msg = mailbox_pop_no_wait_msg(mBox); // remove the oldest msg
+    msg *old_msg = mailbox_pop_no_wait_msg(mBox);     // remove the oldest msg
     old_msg->pBlock->pMessage = NULL;
     safe_free(old_msg);
     mailbox_push_no_wait_msg(mBox, m); // recursive :)
@@ -475,9 +475,7 @@ mailbox *create_mailbox(uint nMessages, uint nDataSize) {
   return mb;
 }
 
-int no_messages(mailbox *mBox) { 
-  return (mBox->nMessages + mBox->nBlockedMsg) == 0 ? TRUE : FALSE; 
-}
+int no_messages(mailbox *mBox) { return mBox->nMessages + mBox->nBlockedMsg; }
 
 exception remove_mailbox(mailbox *mBox) {
   if (no_messages(mBox)) {
@@ -494,7 +492,8 @@ exception send_wait(mailbox *mBox, void *pData) {
   SaveContext();
   if (first_execute == TRUE) {
     first_execute = FALSE;
-    if (mBox->nBlockedMsg > 0 && mBox->pHead->Status == RECEIVER) { // is waiting
+    if (mBox->nBlockedMsg > 0 &&
+        mBox->pHead->Status == RECEIVER) { // is waiting
       msg *m = mailbox_pop_wait_msg(mBox);
       // receiver has the duty to malloc data storage
       memcpy(m->pData, pData, mBox->nDataSize);
@@ -544,7 +543,7 @@ exception receive_wait(mailbox *mBox, void *pData) {
       mailbox_push_wait_msg(mBox, m);
       node_transfer_list(ready_list, waiting_list, node);
       Running = list_get_head_task(ready_list);
-    } else { // msg is waiting
+    } else {                                                 // msg is waiting
       uint wait_type = mBox->nBlockedMsg > 0 ? TRUE : FALSE; // is wait type?
       if (wait_type) {
         msg *m = mailbox_pop_wait_msg(mBox);
@@ -554,6 +553,7 @@ exception receive_wait(mailbox *mBox, void *pData) {
         m->pBlock->pMessage = NULL;
         safe_free(m);
         node_transfer_list(waiting_list, ready_list, node);
+        Running = list_get_head_task(ready_list);
       } else { // no wait
         msg *m = mailbox_pop_wait_msg(mBox);
         // receiver has the duty to malloc data storage
@@ -582,7 +582,8 @@ exception send_no_wait(mailbox *mBox, void *pData) {
   SaveContext();
   if (first_execution == TRUE) {
     first_execution = FALSE;
-    if (mBox->nMessages > 0 && mBox->pHead->Status == RECEIVER) { // receiving task is waiting
+    if (mBox->nMessages > 0 &&
+        mBox->pHead->Status == RECEIVER) { // receiving task is waiting
       msg *m = mailbox_pop_no_wait_msg(mBox);
       memcpy(m->pData, pData, mBox->nDataSize);
       listobj *node = m->pBlock;
@@ -675,7 +676,8 @@ void idle() {
     destroy_list(waiting_list);
     destroy_list(timer_list);
     remove_mailbox(mb);
-    while(1);
+    while (1)
+      ;
   }
   LoadContext();
 #endif
@@ -700,7 +702,7 @@ exception create_task(void (*body)(), uint d) {
   if (kernel_mode == INIT) {
     list_insert_by_ddl(ready_list, create_listobj(tcb));
     return kernel_status;
-  } else { // RUNNING
+  } else {     // RUNNING
     isr_off(); // turn off interrupt
     SaveContext();
     if (first_execute == TRUE) {
