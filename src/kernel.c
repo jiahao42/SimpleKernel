@@ -2,8 +2,8 @@
 #include "stdio.h"
 #include "string.h"
 
-// TODO:
-// More tests, must test send_no_wait and receive_no_wait
+/* TODO: */
+/* More tests, must test send_no_wait and receive_no_wait */
 
 #ifndef texas_dsp
 void isr_off(void) {}
@@ -31,7 +31,7 @@ static const char *mem_alloc_fail = "Memory allocation failed!";
  * Utils *
  *********/
 
-// #define MEM_DEBUG
+/* #define MEM_DEBUG */
 
 static unsigned int mem_counter;
 
@@ -41,13 +41,8 @@ void *safe_malloc(unsigned int size) {
   isr_off();
   void *mem = malloc(size);
   isr_on();
-  if (mem == NULL) {
-    return NULL;
-  } else {
-    // printf("**** malloc[%d] ****\n", malloc_counter);
-    mem_counter++;
-    return mem;
-  }
+  mem_counter++;
+  return mem;
 }
 
 #define safe_free(p)                                                           \
@@ -126,7 +121,7 @@ list *create_list() {
 }
 
 void list_append(list *t_list, listobj *node) {
-  if (t_list->pTail == NULL) { // if the list is empty
+  if (t_list->pTail == NULL) { /* if the list is empty */
     t_list->pHead = node;
     t_list->pTail = node;
     node->pPrevious = NULL;
@@ -140,7 +135,7 @@ void list_append(list *t_list, listobj *node) {
 }
 
 void list_prepend(list *t_list, listobj *node) {
-  if (t_list->pHead == NULL) { // if the list is empty
+  if (t_list->pHead == NULL) { /* if the list is empty */
     t_list->pHead = node;
     t_list->pTail = node;
     node->pPrevious = NULL;
@@ -176,7 +171,7 @@ void list_insert_before(list *t_list, listobj *pos, listobj *n_node) {
 }
 
 void list_insert_by_ddl(list *t_list, listobj *n_node) {
-  if (t_list->pHead == NULL) { // empty list
+  if (t_list->pHead == NULL) { /* empty list */
     list_append(t_list, n_node);
   } else if (n_node->pTask->DeadLine < t_list->pHead->pTask->DeadLine) {
     list_prepend(t_list, n_node);
@@ -201,8 +196,8 @@ whether free the node is up to the caller
 void list_remove_head(list *t_list) {
   listobj *node = t_list->pHead;
   t_list->pHead =
-      node->pNext; // could be NULL when there is only one node in this list
-  if (t_list->pHead == NULL) { // if the list is empty now
+      node->pNext; /* could be NULL when there is only one node in this list */
+  if (t_list->pHead == NULL) { /* if the list is empty now */
     t_list->pTail = NULL;
   } else {
     t_list->pHead->pPrevious = NULL;
@@ -345,9 +340,9 @@ void TimerInt(void) {
     }
   }
   LIST_FOR_EACH(waiting_list) {
-    if (ticks() > item->pTask->DeadLine) { // deadline expired
+    if (ticks() > item->pTask->DeadLine) { /* deadline expired */
       node_transfer_list(waiting_list, ready_list, item);
-      item->pMessage->pBlock = NULL; // TODO: clear mailbox entry
+      item->pMessage->pBlock = NULL; /* TODO: clear mailbox entry */
     }
   }
 }
@@ -365,7 +360,7 @@ void set_deadline(uint nNew) {
   if (first_execute == TRUE) {
     first_execute = FALSE;
     Running->DeadLine = nNew;
-    // reschedule readylist
+    /* reschedule readylist */
     listobj *node = node_fetch_by_task(ready_list, Running);
     node_remove(ready_list, node);
     list_insert_by_ddl(ready_list, node);
@@ -382,7 +377,7 @@ msg *mailbox_pop_wait_msg(mailbox *mBox);
 msg *mailbox_pop_no_wait_msg(mailbox *mBox);
 
 void mailbox_push_wait_msg(mailbox *mBox, msg *m) {
-  if (mBox->nBlockedMsg == 0) { // init empty mailbox
+  if (mBox->nBlockedMsg == 0) { /* init empty mailbox */
     m->pPrevious = NULL;
     m->pNext = NULL;
     mBox->pHead = m;
@@ -398,17 +393,17 @@ void mailbox_push_wait_msg(mailbox *mBox, msg *m) {
 }
 
 void mailbox_push_no_wait_msg(mailbox *mBox, msg *m) {
-  if (mBox->nMessages == 0) { // init empty mailbox
+  if (mBox->nMessages == 0) { /* init empty mailbox */
     m->pPrevious = NULL;
     m->pNext = NULL;
     mBox->pHead = m;
     mBox->pTail = m;
     mBox->nMessages = 1;
-  } else if (mBox->nMessages == mBox->nMaxMessages) { // if mailbox is full
-    msg *old_msg = mailbox_pop_no_wait_msg(mBox);     // remove the oldest msg
+  } else if (mBox->nMessages == mBox->nMaxMessages) { /* if mailbox is full */
+    msg *old_msg = mailbox_pop_no_wait_msg(mBox);     /* remove the oldest msg */
     old_msg->pBlock->pMessage = NULL;
     safe_free(old_msg);
-    mailbox_push_no_wait_msg(mBox, m); // recursive :)
+    mailbox_push_no_wait_msg(mBox, m); /* recursive :) */
   } else {
     m->pPrevious = mBox->pTail;
     m->pNext = NULL;
@@ -419,15 +414,15 @@ void mailbox_push_no_wait_msg(mailbox *mBox, msg *m) {
 }
 
 msg *mailbox_pop_wait_msg(mailbox *mBox) {
-  if (mBox->nBlockedMsg == 0) { // error: pop from empty mailbox
+  if (mBox->nBlockedMsg == 0) { /* error: pop from empty mailbox */
     return NULL;
-  } else if (mBox->nBlockedMsg == 1) { // only 1 message
+  } else if (mBox->nBlockedMsg == 1) { /* only 1 message */
     msg *m = mBox->pHead;
     mBox->pHead = NULL;
     mBox->pTail = NULL;
     mBox->nBlockedMsg = 0;
     return m;
-  } else { // return Head
+  } else { /* return Head */
     msg *m = mBox->pHead;
     mBox->pHead = mBox->pHead->pNext;
     mBox->nBlockedMsg--;
@@ -436,9 +431,9 @@ msg *mailbox_pop_wait_msg(mailbox *mBox) {
 }
 
 msg *mailbox_pop_no_wait_msg(mailbox *mBox) {
-  if (mBox->nMessages == 0) { // error: pop from empty mailbox
+  if (mBox->nMessages == 0) { /* error: pop from empty mailbox */
     return NULL;
-  } else if (mBox->nMessages == 1) { // only 1 message
+  } else if (mBox->nMessages == 1) { /* only 1 message */
     msg *m = mBox->pHead;
     mBox->pHead = NULL;
     mBox->pTail = NULL;
@@ -493,15 +488,15 @@ exception send_wait(mailbox *mBox, void *pData) {
   if (first_execute == TRUE) {
     first_execute = FALSE;
     if (mBox->nBlockedMsg > 0 &&
-        mBox->pHead->Status == RECEIVER) { // is waiting
+        mBox->pHead->Status == RECEIVER) { /* is waiting */
       msg *m = mailbox_pop_wait_msg(mBox);
-      // receiver has the duty to malloc data storage
+      /* receiver has the duty to malloc data storage */
       memcpy(m->pData, pData, mBox->nDataSize);
       listobj *node = m->pBlock;
       m->pBlock->pMessage = NULL;
       safe_free(m);
       node_transfer_list(waiting_list, ready_list, node);
-    } else { // if no task is waiting
+    } else { /* if no task is waiting */
       msg *m = safe_malloc(sizeof(msg));
       listobj *node = list_get_head(ready_list);
       NULL_CHECKER(m);
@@ -515,7 +510,7 @@ exception send_wait(mailbox *mBox, void *pData) {
     }
     LoadContext();
   } else {
-    if (deadline() < ticks()) { // deadline reached
+    if (deadline() < ticks()) { /* deadline reached */
       isr_off();
       msg *m = mailbox_pop_wait_msg(mBox);
       safe_free(m);
@@ -532,9 +527,12 @@ exception receive_wait(mailbox *mBox, void *pData) {
   SaveContext();
   if (first_execution == TRUE) {
     first_execution = FALSE;
-    // receive wait can access both wait msg and non-wait msg
-    if ((mBox->nMessages + mBox->nBlockedMsg) == 0) { // mailbox is empty
+    /* receive wait can access both wait msg and non-wait msg */
+    if ((mBox->nMessages + mBox->nBlockedMsg) == 0) { /* mailbox is empty */
       msg *m = safe_malloc(sizeof(msg));
+      NULL_CHECKER(m);
+      if (kernel_status == FAIL)
+        return kernel_status;
       listobj *node = list_get_head(ready_list);
       node->pMessage = m;
       m->Status = RECEIVER;
@@ -543,27 +541,27 @@ exception receive_wait(mailbox *mBox, void *pData) {
       mailbox_push_wait_msg(mBox, m);
       node_transfer_list(ready_list, waiting_list, node);
       Running = list_get_head_task(ready_list);
-    } else {                                                 // msg is waiting
-      uint wait_type = mBox->nBlockedMsg > 0 ? TRUE : FALSE; // is wait type?
+    } else {                                                 /* msg is waiting */
+      uint wait_type = mBox->nBlockedMsg > 0 ? TRUE : FALSE; /* is wait type? */
       if (wait_type) {
         msg *m = mailbox_pop_wait_msg(mBox);
-        // receiver has the duty to malloc data storage
+        /* receiver has the duty to malloc data storage */
         memcpy(pData, m->pData, mBox->nDataSize);
         listobj *node = m->pBlock;
         m->pBlock->pMessage = NULL;
         safe_free(m);
         node_transfer_list(waiting_list, ready_list, node);
         Running = list_get_head_task(ready_list);
-      } else { // no wait
+      } else { /* no wait */
         msg *m = mailbox_pop_wait_msg(mBox);
-        // receiver has the duty to malloc data storage
+        /* receiver has the duty to malloc data storage */
         m->pBlock->pMessage = NULL;
         safe_free(m);
         memcpy(pData, m->pData, mBox->nDataSize);
       }
     }
     LoadContext();
-  } else { // not first execution
+  } else { /* not first execution */
     if (deadline() < ticks()) {
       isr_off();
       msg *m = mailbox_pop_no_wait_msg(mBox);
@@ -577,26 +575,36 @@ exception receive_wait(mailbox *mBox, void *pData) {
 }
 
 exception send_no_wait(mailbox *mBox, void *pData) {
-  isr_off();
   volatile uint first_execution = TRUE;
+  isr_off();
   SaveContext();
   if (first_execution == TRUE) {
     first_execution = FALSE;
     if (mBox->nMessages > 0 &&
-        mBox->pHead->Status == RECEIVER) { // receiving task is waiting
+        mBox->pHead->Status == RECEIVER) { /* receiving task is waiting */
       msg *m = mailbox_pop_no_wait_msg(mBox);
       memcpy(m->pData, pData, mBox->nDataSize);
-      listobj *node = m->pBlock;
       m->pBlock->pMessage = NULL;
+      node_transfer_list(waiting_list, ready_list, m->pBlock);
       safe_free(m);
-      node_transfer_list(waiting_list, ready_list, node);
+      /* ASYNCHRONOUS, DON'T RESCHEDULE HERE */
       LoadContext();
     } else {
       msg *m = safe_malloc(sizeof(msg));
-      memcpy(m->pData, pData, mBox->nDataSize);
+      NULL_CHECKER(m);
+      if (kernel_status == FAIL)
+        return kernel_status;
+      m->pData = safe_malloc(mBox->nDataSize); 
+      NULL_CHECKER(m->pData);
+      if (kernel_status == FAIL)
+        return kernel_status;
+      memcpy(m->pData, pData, mBox->nDataSize); /* copy data to the message */
       m->Status = SENDER;
-      m->pBlock = list_get_head(ready_list);
+      listobj *node = list_get_head(ready_list);
+      m->pBlock = node;
+      node->pMessage = m;
       mailbox_push_no_wait_msg(mBox, m);
+      /* ASYNCHRONOUS, DON'T RESCHEDULE HERE */
     }
   }
   return OK;
@@ -604,31 +612,30 @@ exception send_no_wait(mailbox *mBox, void *pData) {
 
 int receive_no_wait(mailbox *mBox, void *pData) {
   volatile uint first_execution = TRUE;
-  int msg_status;
   isr_off();
   SaveContext();
   if (first_execution == TRUE) {
     first_execution = FALSE;
-    if (mBox->nBlockedMsg > 0) { // wait type
+    if (mBox->nBlockedMsg > 0) { /* wait type */
       msg *m = mailbox_pop_wait_msg(mBox);
-      msg_status = m->Status;
       memcpy(pData, m->pData, mBox->nDataSize);
       m->pBlock->pMessage = NULL;
       node_transfer_list(waiting_list, ready_list, m->pBlock);
-      // DON'T RESCHEDULE HERE
+      /* ASYNCHRONOUS, DON'T RESCHEDULE HERE */
       safe_free(m);
-    } else if (mBox->nMessages > 0) { // non-wait type
+    } else if (mBox->nMessages > 0) { /* non-wait type */
       msg *m = mailbox_pop_no_wait_msg(mBox);
-      msg_status = m->Status;
       memcpy(pData, m->pData, mBox->nDataSize);
-      safe_free(m->pData); // TODO
-      m->pBlock->pMessage = NULL;
-      // DON'T RESCHEDULE HERE
+      safe_free(m->pData); /* free allocated data from send_no_wait */
+      m->pBlock->pMessage = NULL; 
+      /* ASYNCHRONOUS, DON'T RESCHEDULE HERE */
       safe_free(m);
+    } else { /* empty, not msg read */
+      return FAIL;
     }
     LoadContext();
   }
-  return msg_status;
+  return OK;
 }
 
 /******************************
@@ -705,8 +712,8 @@ exception create_task(void (*body)(), uint d) {
   if (kernel_mode == INIT) {
     list_insert_by_ddl(ready_list, create_listobj(tcb));
     return kernel_status;
-  } else {     // RUNNING
-    isr_off(); // turn off interrupt
+  } else {     /* RUNNING */
+    isr_off(); /* turn off interrupt */
     SaveContext();
     if (first_execute == TRUE) {
       first_execute = FALSE;

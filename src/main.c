@@ -34,7 +34,7 @@ void task2();
       terminate();                                                             \
   } while (0)
 
-#define EXAMPLE 2
+#define EXAMPLE 3
 
 #if EXAMPLE == 1
 
@@ -105,15 +105,18 @@ int main() {
   EXPECT_NOT_EQ_OR_STUCK(NULL, (mb = create_mailbox(1, 15))); /* 2 */
   EXPECT_EQ_OR_STUCK(OK, create_task(task1, 100));            /* 3 */
   run();                                                      /* 4 */
+
 }
 
 void task1(void) {
   int msg = TEST_PATTERN_1;
+  /* start test 1 */
   EXPECT_EQ_OR_TERMINATE(OK, create_task(task2, 200)); /* 5 */
   if (send_wait(mb, &msg) != OK) {                     /* 6 */
     while (1)
       ;
   }
+  /* start test 2 */
   if (send_wait(mb, &msg) == DEADLINE_REACHED) { /* 7 */
     nTest2 = 1;
   }
@@ -134,9 +137,10 @@ void task2(void) {
 
 #if EXAMPLE == 3
 
+int nTest1 = 0, nTest2 = 0;
 int main() {
   EXPECT_EQ_OR_STUCK(OK, init_kernel());                             /* 1 */
-  EXPECT_EQ_OR_STUCK(OK, create_task(task1, 200))                    /* 2 */
+  EXPECT_EQ_OR_STUCK(OK, create_task(task1, 200));                    /* 2 */
   EXPECT_EQ_OR_STUCK(OK, create_task(task2, 150));                   /* 3 */
   EXPECT_NOT_EQ_OR_STUCK(NULL, mb = create_mailbox(1, sizeof(int))); /* 4 */
   run();                                                             /* 5 */
@@ -144,22 +148,41 @@ int main() {
 
 void task1(void) {
   int data2; /* 7 */
-  EXPECT_NOT_EQ_OR_TERMINATE(DEADLINE_REACHED,
-                             receive_wait(mb, &data2)); /* 8/9 */
-  wait(20);                                             /* 10 */
-  receive_no_wait(mb, &data2);                          /* 11 */
-  receive_no_wait(mb, &data2);                          /* 12 */
-  terminate();                                          /* 13 */
+  EXPECT_NOT_EQ_OR_STUCK(DEADLINE_REACHED,
+                             receive_wait(mb, &data2));    /* 8/9 */
+  if (data2 == TEST_PATTERN_1) {
+    nTest1 = 1;
+  }                          
+  /* start test 2 */
+  wait(20);                                                /* 10 */
+  EXPECT_NOT_EQ_OR_STUCK(OK, receive_no_wait(mb, &data2)); /* 11 */
+  EXPECT_EQ_OR_STUCK(TEST_PATTERN_1, data2);
+  if (data2 == TEST_PATTERN_2) {
+    nTest2 = 1;
+  }
+  EXPECT_NOT_EQ_OR_STUCK(FAIL, receive_no_wait(mb, &data2)); /* 12 */
+  terminate();                                               /* 13 */
 }
 
-void task2() {
-  int data = 1;                           /* 14 */
-  EXPECT_NOT_EQ_OR_TERMINATE(DEADLINE_REACHED, send_wait(mb, &data)); /* 15/16 */
-  send_no_wait(mb, &data);                /* 17 */ //TODO: wrap with macro
-  wait(100);                              /* 18 */
-  set_deadline(ticks() + 10);             /* 19 */
-  create_task(task1, ticks() + 30);       /* 20 */
-  terminate();                            /* 21 */
+void task2() {               /* execute first */
+  int data = TEST_PATTERN_1; /* 14 */
+  /* start test 1 */
+  EXPECT_NOT_EQ_OR_STUCK(DEADLINE_REACHED,
+                             send_wait(mb, &data)); /* 15/16 */
+  data = TEST_PATTERN_2;
+  int *a = malloc(sizeof(int) * 4);
+  a = malloc(sizeof(int) * 4);
+  a = malloc(sizeof(int) * 4);
+  a = malloc(sizeof(int) * 4);
+  *a++;
+  EXPECT_EQ_OR_STUCK(OK, send_no_wait(mb, &data));
+  /* 17 */                    // TODO: wrap with macro
+  wait(100);                  /* 18 */
+  /* start test 3 */
+  set_deadline(ticks() + 10); /* 19 */
+  EXPECT_EQ_OR_STUCK(deadline(), 110);
+  create_task(task1, ticks() + 30); /* 20 */
+  terminate();                      /* 21 */
 }
 
 #endif

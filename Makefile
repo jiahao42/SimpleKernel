@@ -4,7 +4,7 @@ AS = arm-none-eabi-as
 ASFLAGS = -g3 -mcpu=cortex-a8
 OBJDIR = obj
 SRC = src
-KERNEL_MODULES = context test kernel main
+KERNEL_MODULES = context kernel main test
 KERNEL_OBJS = $(KERNEL_MODULES:%=$(OBJDIR)/%.o)
 KERNEL = kernel.elf
 TOP = .
