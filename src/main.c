@@ -1,7 +1,6 @@
 #include "kernel.h"
 #include "test.h"
 
-TCB *Running;
 mailbox *mb;
 void task1();
 void task2();
@@ -147,42 +146,34 @@ int main() {
 }
 
 void task1(void) {
-  int data2; /* 7 */
-  EXPECT_NOT_EQ_OR_STUCK(DEADLINE_REACHED,
-                             receive_wait(mb, &data2));    /* 8/9 */
-  if (data2 == TEST_PATTERN_1) {
+  int data2; /* 8/23 */
+  EXPECT_NOT_EQ_OR_STUCK(DEADLINE_REACHED, receive_wait(mb, &data2));    /* 9/24 */
+  if (data2 == TEST_PATTERN_1) { /* 13/25 */
     nTest1 = 1;
   }                          
   /* start test 2 */
-  wait(20);                                                /* 10 */
-  EXPECT_NOT_EQ_OR_STUCK(OK, receive_no_wait(mb, &data2)); /* 11 */
-  EXPECT_EQ_OR_STUCK(TEST_PATTERN_1, data2);
-  if (data2 == TEST_PATTERN_2) {
+  wait(20);     /* 14/26 */
+  EXPECT_EQ_OR_STUCK(OK, receive_no_wait(mb, &data2)); /* 15/27 */
+  if (data2 == TEST_PATTERN_2) { /* 16 */
     nTest2 = 1;
   }
-  EXPECT_NOT_EQ_OR_STUCK(FAIL, receive_no_wait(mb, &data2)); /* 12 */
-  terminate();                                               /* 13 */
+  EXPECT_EQ_OR_STUCK(FAIL, receive_no_wait(mb, &data2)); /* 17 */
+  terminate();                                               /* 18 */
 }
 
 void task2() {               /* execute first */
-  int data = TEST_PATTERN_1; /* 14 */
+  int data = TEST_PATTERN_1; /* 6 */
   /* start test 1 */
-  EXPECT_NOT_EQ_OR_STUCK(DEADLINE_REACHED,
-                             send_wait(mb, &data)); /* 15/16 */
-  data = TEST_PATTERN_2;
-  int *a = malloc(sizeof(int) * 4);
-  a = malloc(sizeof(int) * 4);
-  a = malloc(sizeof(int) * 4);
-  a = malloc(sizeof(int) * 4);
-  *a++;
-  EXPECT_EQ_OR_STUCK(OK, send_no_wait(mb, &data));
-  /* 17 */                    // TODO: wrap with macro
-  wait(100);                  /* 18 */
+  EXPECT_NOT_EQ_OR_STUCK(DEADLINE_REACHED, send_wait(mb, &data)); /* 7 */
+  data = TEST_PATTERN_2; /* 10 */
+  
+  EXPECT_EQ_OR_STUCK(OK, send_no_wait(mb, &data)); /* 11 */
+  wait(100);                  /* 12 */
   /* start test 3 */
   set_deadline(ticks() + 10); /* 19 */
-  EXPECT_EQ_OR_STUCK(deadline(), 110);
-  create_task(task1, ticks() + 30); /* 20 */
-  terminate();                      /* 21 */
+  EXPECT_EQ_OR_STUCK(deadline(), 110); /* 20 */
+  create_task(task1, ticks() + 30); /* 21 */
+  terminate();                      /* 22 */
 }
 
 #endif

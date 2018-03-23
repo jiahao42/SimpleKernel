@@ -1,5 +1,5 @@
 CC = arm-none-eabi-gcc
-CFLAGS = -O0 -g3 -std=c99 -Wall -mcpu=cortex-a8 -mthumb # -marm
+CFLAGS = -O0 -g3 -std=c99 -Wall -mcpu=cortex-a8 -mthumb # -pedantic
 AS = arm-none-eabi-as
 ASFLAGS = -g3 -mcpu=cortex-a8
 OBJDIR = obj
@@ -50,6 +50,7 @@ qemu-gdb: $(KERNEL) .gdbinit
 VFLAGS = --leak-check=full --log-file=qemu.log
 valgrind: $(KERNEL)
 	valgrind $(VFLAGS) $(QEMU) $(QEMUOPTS) -S $(QEMUGDB)
+
 .PHONY: clean _clearscreen
 
 clean:

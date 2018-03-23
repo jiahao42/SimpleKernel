@@ -16,7 +16,7 @@
 
 #else
 
-#define CONTEXT_SIZE    13 
+#define CONTEXT_SIZE    13
 #define STACK_SIZE      100
 #endif
 

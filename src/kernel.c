@@ -1,11 +1,13 @@
 #include "kernel.h"
 #include "stdio.h"
 #include "string.h"
+#include "limits.h"
 
 /* TODO: */
 /* More tests, must test send_no_wait and receive_no_wait */
+#define TEST_MODE
 
-#ifndef texas_dsp
+#ifdef TEST_MODE
 void isr_off(void) {}
 void isr_on(void) {}
 #endif
@@ -31,20 +33,19 @@ static const char *mem_alloc_fail = "Memory allocation failed!";
  * Utils *
  *********/
 
-/* #define MEM_DEBUG */
+#ifdef TEST_MODE
 
 static unsigned int mem_counter;
-
-void *safe_malloc(unsigned int size);
-
 void *safe_malloc(unsigned int size) {
+  void *mem;
   isr_off();
-  void *mem = malloc(size);
+  mem = malloc(size);
   isr_on();
   mem_counter++;
   return mem;
 }
 
+/* Something is wrong when using safe_free, maybe there is a NULL pointer need to be fixed */
 #define safe_free(p)                                                           \
   do {                                                                         \
     void **__p = (void **)(p);                                                 \
@@ -55,6 +56,19 @@ void *safe_malloc(unsigned int size) {
     mem_counter--;                                                             \
   } while (0)
 
+#else
+
+void* safe_malloc(unsigned int size) {
+  return malloc(size);
+}
+
+void safe_free(void* p) {
+  free(p);
+}
+
+#endif
+    
+    
 /*************************
  * TCB list manipulation *
  *************************/
@@ -94,6 +108,8 @@ void init_listobj(listobj *node, TCB *data) {
   node->pTask = data;
   node->pNext = NULL;
   node->pPrevious = NULL;
+  node->pMessage = NULL;
+  node->nTCnt = 0;
 }
 
 listobj *create_listobj(TCB *data) {
@@ -230,9 +246,9 @@ uint if_node_in_list(list *l, listobj *node) {
 
 void node_remove(list *t_list, listobj *node) {
   if (node == t_list->pHead) {
-    return list_remove_head(t_list);
+    list_remove_head(t_list);
   } else if (node == t_list->pTail) {
-    return list_remove_tail(t_list);
+    list_remove_tail(t_list);
   } else {
     node->pPrevious->pNext = node->pNext;
     node->pNext->pPrevious = node->pPrevious;
@@ -308,12 +324,13 @@ This call will block the calling task until the given
 number of ticks has expired.
 */
 exception wait(uint nTicks) {
-  isr_off();
   volatile uint first_execute = TRUE;
+  isr_off();
   SaveContext();
   if (first_execute == TRUE) {
+    listobj *node;
     first_execute = FALSE;
-    listobj *node = node_fetch_by_task(ready_list, Running);
+    node = node_fetch_by_task(ready_list, Running);
     node->nTCnt = nTicks;
     node_transfer_list(ready_list, timer_list, node);
     Running = list_get_head_task(ready_list);
@@ -329,9 +346,10 @@ exception wait(uint nTicks) {
 }
 
 #define LIST_FOR_EACH(list)                                                    \
-  for (listobj *item = list->pHead; item != NULL; item = item->pNext)
+  for (item = list->pHead; item != NULL; item = item->pNext)
 
 void TimerInt(void) {
+  listobj *item;
   tick_counter++;
   LIST_FOR_EACH(timer_list) {
     item->nTCnt--;
@@ -358,10 +376,11 @@ void set_deadline(uint nNew) {
   isr_off();
   SaveContext();
   if (first_execute == TRUE) {
+    listobj *node;
     first_execute = FALSE;
     Running->DeadLine = nNew;
     /* reschedule readylist */
-    listobj *node = node_fetch_by_task(ready_list, Running);
+    node = node_fetch_by_task(ready_list, Running);
     node_remove(ready_list, node);
     list_insert_by_ddl(ready_list, node);
     LoadContext();
@@ -383,6 +402,11 @@ void mailbox_push_wait_msg(mailbox *mBox, msg *m) {
     mBox->pHead = m;
     mBox->pTail = m;
     mBox->nBlockedMsg = 1;
+  } else if (mBox->nMessages == mBox->nMaxMessages) { /* if mailbox is full */
+    msg *old_msg = mailbox_pop_wait_msg(mBox);     /* remove the oldest msg */
+    old_msg->pBlock->pMessage = NULL;
+    safe_free(old_msg);
+    mailbox_push_wait_msg(mBox, m); /* recursive :) */
   } else {
     m->pPrevious = mBox->pTail;
     m->pNext = NULL;
@@ -490,9 +514,10 @@ exception send_wait(mailbox *mBox, void *pData) {
     if (mBox->nBlockedMsg > 0 &&
         mBox->pHead->Status == RECEIVER) { /* is waiting */
       msg *m = mailbox_pop_wait_msg(mBox);
+      listobj *node;
       /* receiver has the duty to malloc data storage */
       memcpy(m->pData, pData, mBox->nDataSize);
-      listobj *node = m->pBlock;
+      node = m->pBlock;
       m->pBlock->pMessage = NULL;
       safe_free(m);
       node_transfer_list(waiting_list, ready_list, node);
@@ -511,8 +536,9 @@ exception send_wait(mailbox *mBox, void *pData) {
     LoadContext();
   } else {
     if (deadline() < ticks()) { /* deadline reached */
+      msg *m;
       isr_off();
-      msg *m = mailbox_pop_wait_msg(mBox);
+      m = mailbox_pop_wait_msg(mBox);
       safe_free(m);
       isr_on();
       return DEADLINE_REACHED;
@@ -530,10 +556,10 @@ exception receive_wait(mailbox *mBox, void *pData) {
     /* receive wait can access both wait msg and non-wait msg */
     if ((mBox->nMessages + mBox->nBlockedMsg) == 0) { /* mailbox is empty */
       msg *m = safe_malloc(sizeof(msg));
+      listobj *node = list_get_head(ready_list);
       NULL_CHECKER(m);
       if (kernel_status == FAIL)
         return kernel_status;
-      listobj *node = list_get_head(ready_list);
       node->pMessage = m;
       m->Status = RECEIVER;
       m->pBlock = node;
@@ -545,9 +571,9 @@ exception receive_wait(mailbox *mBox, void *pData) {
       uint wait_type = mBox->nBlockedMsg > 0 ? TRUE : FALSE; /* is wait type? */
       if (wait_type) {
         msg *m = mailbox_pop_wait_msg(mBox);
+        listobj *node = m->pBlock;
         /* receiver has the duty to malloc data storage */
         memcpy(pData, m->pData, mBox->nDataSize);
-        listobj *node = m->pBlock;
         m->pBlock->pMessage = NULL;
         safe_free(m);
         node_transfer_list(waiting_list, ready_list, node);
@@ -563,8 +589,9 @@ exception receive_wait(mailbox *mBox, void *pData) {
     LoadContext();
   } else { /* not first execution */
     if (deadline() < ticks()) {
+      msg *m;
       isr_off();
-      msg *m = mailbox_pop_no_wait_msg(mBox);
+      m = mailbox_pop_wait_msg(mBox);
       m->pBlock->pMessage = NULL;
       safe_free(m);
       isr_on();
@@ -587,10 +614,11 @@ exception send_no_wait(mailbox *mBox, void *pData) {
       m->pBlock->pMessage = NULL;
       node_transfer_list(waiting_list, ready_list, m->pBlock);
       safe_free(m);
-      /* ASYNCHRONOUS, DON'T RESCHEDULE HERE */
+      Running = list_get_head_task(ready_list);
       LoadContext();
     } else {
       msg *m = safe_malloc(sizeof(msg));
+      listobj *node = list_get_head(ready_list);
       NULL_CHECKER(m);
       if (kernel_status == FAIL)
         return kernel_status;
@@ -600,11 +628,9 @@ exception send_no_wait(mailbox *mBox, void *pData) {
         return kernel_status;
       memcpy(m->pData, pData, mBox->nDataSize); /* copy data to the message */
       m->Status = SENDER;
-      listobj *node = list_get_head(ready_list);
       m->pBlock = node;
       node->pMessage = m;
       mailbox_push_no_wait_msg(mBox, m);
-      /* ASYNCHRONOUS, DON'T RESCHEDULE HERE */
     }
   }
   return OK;
@@ -617,18 +643,17 @@ int receive_no_wait(mailbox *mBox, void *pData) {
   if (first_execution == TRUE) {
     first_execution = FALSE;
     if (mBox->nBlockedMsg > 0) { /* wait type */
-      msg *m = mailbox_pop_wait_msg(mBox);
+      msg *m = mailbox_pop_no_wait_msg(mBox);
       memcpy(pData, m->pData, mBox->nDataSize);
       m->pBlock->pMessage = NULL;
       node_transfer_list(waiting_list, ready_list, m->pBlock);
-      /* ASYNCHRONOUS, DON'T RESCHEDULE HERE */
       safe_free(m);
+      Running = list_get_head_task(ready_list);
     } else if (mBox->nMessages > 0) { /* non-wait type */
       msg *m = mailbox_pop_no_wait_msg(mBox);
       memcpy(pData, m->pData, mBox->nDataSize);
       safe_free(m->pData); /* free allocated data from send_no_wait */
       m->pBlock->pMessage = NULL; 
-      /* ASYNCHRONOUS, DON'T RESCHEDULE HERE */
       safe_free(m);
     } else { /* empty, not msg read */
       return FAIL;
@@ -655,6 +680,8 @@ init_kernel call must be made before any other call is
 made to the kernel.
 */
 int init_kernel() {
+  TCB *t_idle;
+  kernel_mode = INIT;
   kernel_status = OK;
   set_ticks(0);
   ready_list = create_list();
@@ -663,22 +690,18 @@ int init_kernel() {
   NULL_CHECKER(waiting_list);
   timer_list = create_list();
   NULL_CHECKER(timer_list);
-  TCB *t_idle = create_TCB();
+  t_idle = create_TCB();
   NULL_CHECKER(t_idle);
   t_idle->PC = idle;
   t_idle->SP = &(Running->StackSeg[STACK_SIZE - 1]);
-  t_idle->DeadLine = 0xffffffff;
+  t_idle->DeadLine = UINT_MAX;
   list_insert_by_ddl(ready_list, create_listobj(t_idle));
-  kernel_mode = INIT;
   return kernel_status;
 }
 
-extern mailbox *mb;
 void idle() {
-#ifdef texas_dep
-  while (1)
-    ;
-#else
+#ifdef TEST_MODE
+  extern mailbox *mb;
   TimerInt();
   Running = list_get_head_task(ready_list);
   if (tick_counter > 10000) {
@@ -686,10 +709,11 @@ void idle() {
     destroy_list(waiting_list);
     destroy_list(timer_list);
     remove_mailbox(mb);
-    while (1)
-      ;
+    while (1);
   }
   LoadContext();
+#else
+  while(1);
 #endif
 }
 
@@ -706,7 +730,7 @@ exception create_task(void (*body)(), uint d) {
   NULL_CHECKER(tcb);
   if (kernel_status != OK)
     return kernel_status;
-  tcb->DeadLine = ticks() + d;
+  tcb->DeadLine = d;
   tcb->PC = body;
   tcb->SP = &(tcb->StackSeg[STACK_SIZE - 1]);
   if (kernel_mode == INIT) {
@@ -733,6 +757,9 @@ initialization code. After this call the system will be in
 running mode.
 */
 void run() {
+  #ifndef TEST_MODE
+  timer0_start();
+  #endif
   kernel_mode = RUNNING;
   Running = list_get_head_task(ready_list);
   isr_on();
@@ -746,6 +773,6 @@ another task will be scheduled for execution.
 */
 void terminate() {
   node_destroy_by_task(ready_list, Running);
-  Running = ready_list->pHead->pTask;
+  Running = list_get_head_task(ready_list);
   LoadContext();
 }
