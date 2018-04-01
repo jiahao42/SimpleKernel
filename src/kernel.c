@@ -3,14 +3,28 @@
 #include "string.h"
 #include "limits.h"
 
-/* TODO: */
-/* More tests, must test send_no_wait and receive_no_wait */
-#define TEST_MODE
 
-#ifdef TEST_MODE
-void isr_off(void) {}
-void isr_on(void) {}
-#endif
+/* TODO: */
+/* 1. More tests, must test send_no_wait and receive_no_wait */
+/* 2. Turn off interrupts on memory handling (malloc/calloc/free is **not** reentrant). */
+/* 3. Check for other non-reentrant functions (such as printf) and be careful with those. */
+
+
+/*
+********************
+*****Principles*****
+********************
+1. Messages are **only** created before entering the mailbox.
+Related functions: send_wait, send_no_wait
+2. Messages are **only** destroyed after leaving the mailbox.
+Related functions: 
+  mailbox_pop_no_wait_msg, mailbox_pop_wait_msg
+  receive_no_wait, receive_wait
+2. Tasks are only destroyed in terminate()
+3. 
+*/
+
+#define TEST_MODE
 
 #define OS_ERROR(e)                                                            \
   if (e) {                                                                     \
@@ -35,25 +49,29 @@ static const char *mem_alloc_fail = "Memory allocation failed!";
 
 #ifdef TEST_MODE
 
+void isr_off(void) {}
+void isr_on(void) {}
+
 static unsigned int mem_counter;
 void *safe_malloc(unsigned int size) {
-  void *mem;
+  void* mem;
   isr_off();
   mem = malloc(size);
-  isr_on();
   mem_counter++;
+  isr_on();
   return mem;
 }
 
 /* Something is wrong when using safe_free, maybe there is a NULL pointer need to be fixed */
 #define safe_free(p)                                                           \
   do {                                                                         \
-    void **__p = (void **)(p);                                                 \
+    void **__p;                                                                \
     isr_off();                                                                 \
+    __p = (void **)(&p);                                                       \
     free(*(__p));                                                              \
-    isr_on();                                                                  \
     *(__p) = NULL;                                                             \
     mem_counter--;                                                             \
+    isr_on();                                                                  \
   } while (0)
 
 #else
@@ -78,30 +96,30 @@ void init_listobj(listobj *node, TCB *data);
 listobj *create_listobj(TCB *data);
 void destroy_listobj(listobj *node);
 list *create_list();
-void list_append(list *t_list, listobj *node);
-void list_prepend(list *t_list, listobj *node);
-void list_insert_after(list *t_list, listobj *pos, listobj *n_node);
-void list_insert_before(list *t_list, listobj *pos, listobj *n_node);
-void list_insert_by_ddl(list *t_list, listobj *n_node);
-void list_remove_head(list *t_list);
-void list_remove_tail(list *t_list);
-TCB *list_get_head_task(list *t_list);
-listobj *list_get_head(list *t_list);
+void list_append(list *_list, listobj *node);
+void list_prepend(list *_list, listobj *node);
+void list_insert_after(list *_list, listobj *pos, listobj *n_node);
+void list_insert_before(list *_list, listobj *pos, listobj *n_node);
+void list_insert_by_ddl(list *_list, listobj *n_node);
+void list_remove_head(list *_list);
+void list_remove_tail(list *_list);
+TCB *list_get_head_task(list *_list);
+listobj *list_get_head(list *_list);
 uint if_node_in_list(list *l, listobj *node);
-void node_remove(list *t_list, listobj *node);
-void node_destroy_by_task(list *t_list, TCB *tcb);
-listobj *node_fetch_by_task(list *t_list, TCB *tcb);
+void node_remove(list *_list, listobj *node);
+void node_destroy_by_task(list *_list, TCB *tcb);
+listobj *node_fetch_by_task(list *_list, TCB *tcb);
 void node_transfer_list(list *src, list *dest, listobj *node);
-void destroy_list(list *t_list);
+void destroy_list(list *_list);
 
 TCB *create_TCB() {
   TCB *tcb = safe_malloc(sizeof(TCB));
   if (tcb == NULL)
     return NULL;
   tcb->SPSR = 0;
-  memset(tcb->Context, 0, sizeof(*tcb->Context) * CONTEXT_SIZE);
-  memset(tcb->StackSeg, 0, sizeof(*tcb->StackSeg) * STACK_SIZE);
-  tcb->DeadLine = 0xffffffff;
+  memset(tcb->Context, 0, sizeof(tcb->Context));
+  memset(tcb->StackSeg, 0, sizeof(tcb->StackSeg));
+  tcb->DeadLine = UINT_MAX;
   return tcb;
 }
 void init_listobj(listobj *node, TCB *data) {
@@ -123,50 +141,50 @@ listobj *create_listobj(TCB *data) {
 void destroy_listobj(listobj *node) {
   safe_free(node->pTask);
   safe_free(node);
-  node->pNext = NULL;
-  node->pPrevious = NULL;
+  // node->pNext = NULL;
+  // node->pPrevious = NULL;
 }
 
 list *create_list() {
-  list *t_list = (list *)safe_malloc(sizeof(list));
-  if (t_list == NULL)
+  list *_list = (list *)safe_malloc(sizeof(list));
+  if (_list == NULL)
     return NULL;
-  t_list->pHead = NULL;
-  t_list->pTail = NULL;
-  return t_list;
+  _list->pHead = NULL;
+  _list->pTail = NULL;
+  return _list;
 }
 
-void list_append(list *t_list, listobj *node) {
-  if (t_list->pTail == NULL) { /* if the list is empty */
-    t_list->pHead = node;
-    t_list->pTail = node;
+void list_append(list *_list, listobj *node) {
+  if (_list->pTail == NULL) { /* if the list is empty */
+    _list->pHead = node;
+    _list->pTail = node;
     node->pPrevious = NULL;
     node->pNext = NULL;
   } else {
-    t_list->pTail->pNext = node;
-    node->pPrevious = t_list->pTail;
+    _list->pTail->pNext = node;
+    node->pPrevious = _list->pTail;
     node->pNext = NULL;
-    t_list->pTail = node;
+    _list->pTail = node;
   }
 }
 
-void list_prepend(list *t_list, listobj *node) {
-  if (t_list->pHead == NULL) { /* if the list is empty */
-    t_list->pHead = node;
-    t_list->pTail = node;
+void list_prepend(list *_list, listobj *node) {
+  if (_list->pHead == NULL) { /* if the list is empty */
+    _list->pHead = node;
+    _list->pTail = node;
     node->pPrevious = NULL;
     node->pNext = NULL;
   } else {
     node->pPrevious = NULL;
-    node->pNext = t_list->pHead;
-    t_list->pHead->pPrevious = node;
-    t_list->pHead = node;
+    node->pNext = _list->pHead;
+    _list->pHead->pPrevious = node;
+    _list->pHead = node;
   }
 }
 
-void list_insert_after(list *t_list, listobj *pos, listobj *n_node) {
+void list_insert_after(list *_list, listobj *pos, listobj *n_node) {
   if (pos->pNext == NULL) {
-    list_append(t_list, n_node);
+    list_append(_list, n_node);
     return;
   }
   n_node->pNext = pos->pNext;
@@ -175,9 +193,9 @@ void list_insert_after(list *t_list, listobj *pos, listobj *n_node) {
   n_node->pNext->pPrevious = n_node;
 }
 
-void list_insert_before(list *t_list, listobj *pos, listobj *n_node) {
+void list_insert_before(list *_list, listobj *pos, listobj *n_node) {
   if (pos->pPrevious == NULL) {
-    list_prepend(t_list, n_node);
+    list_prepend(_list, n_node);
     return;
   }
   n_node->pPrevious = pos->pPrevious;
@@ -186,18 +204,18 @@ void list_insert_before(list *t_list, listobj *pos, listobj *n_node) {
   pos->pPrevious = n_node;
 }
 
-void list_insert_by_ddl(list *t_list, listobj *n_node) {
-  if (t_list->pHead == NULL) { /* empty list */
-    list_append(t_list, n_node);
-  } else if (n_node->pTask->DeadLine < t_list->pHead->pTask->DeadLine) {
-    list_prepend(t_list, n_node);
-  } else if (n_node->pTask->DeadLine > t_list->pTail->pTask->DeadLine) {
-    list_append(t_list, n_node);
+void list_insert_by_ddl(list *_list, listobj *n_node) {
+  if (_list->pHead == NULL) { /* empty list */
+    list_append(_list, n_node);
+  } else if (n_node->pTask->DeadLine < _list->pHead->pTask->DeadLine) {
+    list_prepend(_list, n_node);
+  } else if (n_node->pTask->DeadLine > _list->pTail->pTask->DeadLine) {
+    list_append(_list, n_node);
   } else {
-    listobj *cursor = t_list->pHead->pNext;
+    listobj *cursor = _list->pHead->pNext;
     while (cursor) {
       if (n_node->pTask->DeadLine < cursor->pTask->DeadLine) {
-        list_insert_before(t_list, cursor, n_node);
+        list_insert_before(_list, cursor, n_node);
         break;
       }
       cursor = cursor->pNext;
@@ -209,30 +227,30 @@ void list_insert_by_ddl(list *t_list, listobj *n_node) {
 remove the node from list,
 whether free the node is up to the caller
 */
-void list_remove_head(list *t_list) {
-  listobj *node = t_list->pHead;
-  t_list->pHead =
+void list_remove_head(list *_list) {
+  listobj *node = _list->pHead;
+  _list->pHead =
       node->pNext; /* could be NULL when there is only one node in this list */
-  if (t_list->pHead == NULL) { /* if the list is empty now */
-    t_list->pTail = NULL;
+  if (_list->pHead == NULL) { /* if the list is empty now */
+    _list->pTail = NULL;
   } else {
-    t_list->pHead->pPrevious = NULL;
+    _list->pHead->pPrevious = NULL;
   }
 }
 
-void list_remove_tail(list *t_list) {
-  listobj *node = t_list->pTail;
-  t_list->pTail = node->pPrevious;
-  if (t_list->pTail == NULL) {
-    t_list->pHead = NULL;
+void list_remove_tail(list *_list) {
+  listobj *node = _list->pTail;
+  _list->pTail = node->pPrevious;
+  if (_list->pTail == NULL) {
+    _list->pHead = NULL;
   } else {
-    t_list->pTail->pNext = NULL;
+    _list->pTail->pNext = NULL;
   }
 }
 
-TCB *list_get_head_task(list *t_list) { return t_list->pHead->pTask; }
+TCB *list_get_head_task(list *_list) { return _list->pHead->pTask; }
 
-listobj *list_get_head(list *t_list) { return t_list->pHead; }
+listobj *list_get_head(list *_list) { return _list->pHead; }
 
 uint if_node_in_list(list *l, listobj *node) {
   listobj *cursor = l->pHead;
@@ -244,11 +262,11 @@ uint if_node_in_list(list *l, listobj *node) {
   return FALSE;
 }
 
-void node_remove(list *t_list, listobj *node) {
-  if (node == t_list->pHead) {
-    list_remove_head(t_list);
-  } else if (node == t_list->pTail) {
-    list_remove_tail(t_list);
+void node_remove(list *_list, listobj *node) {
+  if (node == _list->pHead) {
+    list_remove_head(_list);
+  } else if (node == _list->pTail) {
+    list_remove_tail(_list);
   } else {
     node->pPrevious->pNext = node->pNext;
     node->pNext->pPrevious = node->pPrevious;
@@ -258,11 +276,11 @@ void node_remove(list *t_list, listobj *node) {
 /*
 Careful! This function will free node
 */
-void node_destroy_by_task(list *t_list, TCB *tcb) {
-  listobj *cursor = t_list->pHead;
+void node_destroy_by_task(list *_list, TCB *tcb) {
+  listobj *cursor = _list->pHead;
   while (cursor != NULL) {
     if (cursor->pTask == tcb) {
-      node_remove(t_list, cursor);
+      node_remove(_list, cursor);
       destroy_listobj(cursor);
       break;
     } else {
@@ -271,8 +289,8 @@ void node_destroy_by_task(list *t_list, TCB *tcb) {
   }
 }
 
-listobj *node_fetch_by_task(list *t_list, TCB *tcb) {
-  listobj *cursor = t_list->pHead;
+listobj *node_fetch_by_task(list *_list, TCB *tcb) {
+  listobj *cursor = _list->pHead;
   while (cursor != NULL) {
     if (cursor->pTask == tcb) {
       return cursor;
@@ -288,17 +306,16 @@ void node_transfer_list(list *src, list *dest, listobj *node) {
   list_insert_by_ddl(dest, node);
 }
 
-void destroy_list(list *t_list) {
-  listobj *cursor = t_list->pHead;
-  for (; t_list->pHead != NULL;) {
-    cursor = t_list->pHead;
-    safe_free(cursor->pTask);
-    t_list->pHead = t_list->pHead->pNext;
-    safe_free(cursor);
+void destroy_list(list *_list) {
+  listobj *cursor;
+  for (; _list->pHead != NULL;) {
+    cursor = _list->pHead;
+    _list->pHead = _list->pHead->pNext;
+    destroy_listobj(cursor);
   }
-  t_list->pHead = NULL;
-  t_list->pTail = NULL;
-  safe_free(t_list);
+  _list->pHead = NULL;
+  _list->pTail = NULL;
+  safe_free(_list);
 }
 
 /******************
@@ -345,22 +362,22 @@ exception wait(uint nTicks) {
   return kernel_status;
 }
 
-#define LIST_FOR_EACH(list)                                                    \
+#define LIST_FOR_EACH(list, item)                                                    \
   for (item = list->pHead; item != NULL; item = item->pNext)
 
 void TimerInt(void) {
   listobj *item;
   tick_counter++;
-  LIST_FOR_EACH(timer_list) {
+  LIST_FOR_EACH(timer_list, item) {
     item->nTCnt--;
     if (item->nTCnt == 0) {
       node_transfer_list(timer_list, ready_list, item);
     }
   }
-  LIST_FOR_EACH(waiting_list) {
+  LIST_FOR_EACH(waiting_list, item) {
     if (ticks() > item->pTask->DeadLine) { /* deadline expired */
       node_transfer_list(waiting_list, ready_list, item);
-      item->pMessage->pBlock = NULL; /* TODO: clear mailbox entry */
+      // item->pMessage->pBlock = NULL; /* TODO: clear mailbox entry */
     }
   }
 }
@@ -402,7 +419,7 @@ void mailbox_push_wait_msg(mailbox *mBox, msg *m) {
     mBox->pHead = m;
     mBox->pTail = m;
     mBox->nBlockedMsg = 1;
-  } else if (mBox->nMessages == mBox->nMaxMessages) { /* if mailbox is full */
+  } else if (mBox->nBlockedMsg == mBox->nMaxMessages) { /* if mailbox is full */
     msg *old_msg = mailbox_pop_wait_msg(mBox);     /* remove the oldest msg */
     old_msg->pBlock->pMessage = NULL;
     safe_free(old_msg);
@@ -579,11 +596,11 @@ exception receive_wait(mailbox *mBox, void *pData) {
         node_transfer_list(waiting_list, ready_list, node);
         Running = list_get_head_task(ready_list);
       } else { /* no wait */
-        msg *m = mailbox_pop_wait_msg(mBox);
+        msg *m = mailbox_pop_no_wait_msg(mBox);
         /* receiver has the duty to malloc data storage */
         m->pBlock->pMessage = NULL;
-        safe_free(m);
         memcpy(pData, m->pData, mBox->nDataSize);
+        safe_free(m);
       }
     }
     LoadContext();
@@ -616,7 +633,7 @@ exception send_no_wait(mailbox *mBox, void *pData) {
       safe_free(m);
       Running = list_get_head_task(ready_list);
       LoadContext();
-    } else {
+    } else { /* No task is waiting */
       msg *m = safe_malloc(sizeof(msg));
       listobj *node = list_get_head(ready_list);
       NULL_CHECKER(m);
@@ -631,6 +648,7 @@ exception send_no_wait(mailbox *mBox, void *pData) {
       m->pBlock = node;
       node->pMessage = m;
       mailbox_push_no_wait_msg(mBox, m);
+      /* No reschedule */
     }
   }
   return OK;
@@ -643,7 +661,7 @@ int receive_no_wait(mailbox *mBox, void *pData) {
   if (first_execution == TRUE) {
     first_execution = FALSE;
     if (mBox->nBlockedMsg > 0) { /* wait type */
-      msg *m = mailbox_pop_no_wait_msg(mBox);
+      msg *m = mailbox_pop_wait_msg(mBox);
       memcpy(pData, m->pData, mBox->nDataSize);
       m->pBlock->pMessage = NULL;
       node_transfer_list(waiting_list, ready_list, m->pBlock);
@@ -696,19 +714,19 @@ int init_kernel() {
   t_idle->SP = &(Running->StackSeg[STACK_SIZE - 1]);
   t_idle->DeadLine = UINT_MAX;
   list_insert_by_ddl(ready_list, create_listobj(t_idle));
-  return kernel_status;
+  return kernel_status;   
 }
 
 void idle() {
 #ifdef TEST_MODE
-  extern mailbox *mb;
+  // extern mailbox *mb;
   TimerInt();
   Running = list_get_head_task(ready_list);
-  if (tick_counter > 10000) {
+  if (tick_counter > 100000) {
     destroy_list(ready_list);
     destroy_list(waiting_list);
     destroy_list(timer_list);
-    remove_mailbox(mb);
+    // remove_mailbox(mb);
     while (1);
   }
   LoadContext();

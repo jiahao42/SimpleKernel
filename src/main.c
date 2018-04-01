@@ -1,9 +1,11 @@
 #include "kernel.h"
 #include "test.h"
 
-mailbox *mb;
-void task1();
-void task2();
+/*
+There are 4 tests to check if the kernel works as predicted,
+choose the test by define the macro
+*/
+#define TEST_INDEX 4
 #define TEST_PATTERN_1 0xAA
 #define TEST_PATTERN_2 0x55
 
@@ -33,10 +35,10 @@ void task2();
       terminate();                                                             \
   } while (0)
 
-#define EXAMPLE 3
-
-#if EXAMPLE == 1
-
+#if TEST_INDEX == 1
+mailbox *mb;
+void task1();
+void task2();
 int nTest1 = 0, nTest2 = 0, nTest3 = 0;
 int main(void) {
   internal_test_suite();
@@ -95,8 +97,10 @@ void task2(void) {
 
 #endif
 
-#if EXAMPLE == 2
-
+#if TEST_INDEX == 2
+mailbox *mb;
+void task1();
+void task2();
 int nTest1 = 0, nTest2 = 0;
 int main() {
   internal_test_suite();
@@ -104,7 +108,6 @@ int main() {
   EXPECT_NOT_EQ_OR_STUCK(NULL, (mb = create_mailbox(1, 15))); /* 2 */
   EXPECT_EQ_OR_STUCK(OK, create_task(task1, 100));            /* 3 */
   run();                                                      /* 4 */
-
 }
 
 void task1(void) {
@@ -134,46 +137,169 @@ void task2(void) {
 
 #endif
 
-#if EXAMPLE == 3
-
+#if TEST_INDEX == 3
+mailbox *mb;
+void task1();
+void task2();
 int nTest1 = 0, nTest2 = 0;
 int main() {
   EXPECT_EQ_OR_STUCK(OK, init_kernel());                             /* 1 */
-  EXPECT_EQ_OR_STUCK(OK, create_task(task1, 200));                    /* 2 */
+  EXPECT_EQ_OR_STUCK(OK, create_task(task1, 200));                   /* 2 */
   EXPECT_EQ_OR_STUCK(OK, create_task(task2, 150));                   /* 3 */
   EXPECT_NOT_EQ_OR_STUCK(NULL, mb = create_mailbox(1, sizeof(int))); /* 4 */
   run();                                                             /* 5 */
 }
 
 void task1(void) {
-  int data2; /* 8/23 */
-  EXPECT_NOT_EQ_OR_STUCK(DEADLINE_REACHED, receive_wait(mb, &data2));    /* 9/24 */
+  int data2;                                                          /* 8/23 */
+  /* Finally, it will stop here */
+  EXPECT_NOT_EQ_OR_STUCK(DEADLINE_REACHED, receive_wait(mb, &data2)); /* 9/24 */
   if (data2 == TEST_PATTERN_1) { /* 13/25 */
     nTest1 = 1;
-  }                          
+  }
   /* start test 2 */
-  wait(20);     /* 14/26 */
+  wait(20);                                            /* 14/26 */
   EXPECT_EQ_OR_STUCK(OK, receive_no_wait(mb, &data2)); /* 15/27 */
-  if (data2 == TEST_PATTERN_2) { /* 16 */
+  if (data2 == TEST_PATTERN_2) {                       /* 16 */
     nTest2 = 1;
   }
   EXPECT_EQ_OR_STUCK(FAIL, receive_no_wait(mb, &data2)); /* 17 */
-  terminate();                                               /* 18 */
+  terminate();                                           /* 18 */
 }
 
 void task2() {               /* execute first */
   int data = TEST_PATTERN_1; /* 6 */
   /* start test 1 */
   EXPECT_NOT_EQ_OR_STUCK(DEADLINE_REACHED, send_wait(mb, &data)); /* 7 */
-  data = TEST_PATTERN_2; /* 10 */
-  
+  data = TEST_PATTERN_2;                                          /* 10 */
+
   EXPECT_EQ_OR_STUCK(OK, send_no_wait(mb, &data)); /* 11 */
-  wait(100);                  /* 12 */
+  wait(100);                                       /* 12 */
   /* start test 3 */
-  set_deadline(ticks() + 10); /* 19 */
+  set_deadline(ticks() + 10);          /* 19 */
   EXPECT_EQ_OR_STUCK(deadline(), 110); /* 20 */
-  create_task(task1, ticks() + 30); /* 21 */
-  terminate();                      /* 22 */
+  create_task(task1, ticks() + 30);    /* 21 */
+  terminate();                         /* 22 */
+}
+
+#endif
+
+#if TEST_INDEX == 4
+#define NUM_OF_MSG(mb) (mb->nMessages + mb->nBlockedMsg)
+void task1();
+void task2();
+void task3();
+void task4();
+void task5();
+void task6();
+void task7();
+mailbox *mb1;
+mailbox *mb2;
+int nTest = 0, nTest1 = 0, nTest2 = 0, nTest3 = 0, nTest4 = 0, nTest5 = 0, nTest6 = 0;
+int main() {
+  EXPECT_EQ_OR_STUCK(OK, init_kernel());                              /* 1 */
+  EXPECT_EQ_OR_STUCK(OK, create_task(task1, 10000));                  /* 2 */
+  EXPECT_EQ_OR_STUCK(OK, create_task(task2, 20000));                  /* 2 */
+  EXPECT_EQ_OR_STUCK(OK, create_task(task3, 30000));                  /* 2 */
+  EXPECT_EQ_OR_STUCK(OK, create_task(task4, 40000));                  /* 2 */
+  EXPECT_NOT_EQ_OR_STUCK(NULL, mb1 = create_mailbox(2, sizeof(int))); /* 3 */
+  EXPECT_NOT_EQ_OR_STUCK(NULL, mb2 = create_mailbox(2, sizeof(int))); /* 4 */
+  run();                                                              /* 5 */
+}
+
+void task1() {
+  int SIG1 = 1;                                      /* 6 */
+  EXPECT_EQ_OR_STUCK(OK, send_wait(mb1, &SIG1));     /* 7 */
+  EXPECT_EQ_OR_STUCK(0, NUM_OF_MSG(mb1));            /* 11 */
+  int SIG2 = 2;                                      /* 12 */
+  EXPECT_EQ_OR_STUCK(OK, send_wait(mb1, &SIG2));     /* 13 */
+  int recv3 = 0;                                     /* 23 */
+  EXPECT_EQ_OR_STUCK(OK, receive_wait(mb1, &recv3)); /* 24 */
+  EXPECT_EQ_OR_STUCK(0, NUM_OF_MSG(mb1));            /* 25 */
+  if (recv3 == 3) {                                  /* 26 */
+    nTest3 = 1;
+  }
+  wait(10); /* 27 */
+
+  /* idle() for 10 ticks */ /* 38 */
+  terminate();              /* 39 */
+}
+
+void task2() {
+  int recv1 = 0;                                        /* 8 */
+  EXPECT_EQ_OR_STUCK(1, NUM_OF_MSG(mb1));               /* 9 */
+  EXPECT_EQ_OR_STUCK(OK, receive_no_wait(mb1, &recv1)); /* 10 */
+  if (recv1 == 1) {                                     /* 14 */
+    nTest1 = 1;
+  }
+  int SIG3 = 3;                                  /* 15 */
+  EXPECT_EQ_OR_STUCK(OK, send_wait(mb1, &SIG3)); /* 16 */
+  wait(20);                                      /* 28 */
+
+  /* idle() for 10 ticks */ /* 40 */
+  terminate();              /* 41 */
+}
+
+void task3() {
+  int SIG4 = 4;                                      /* 17 */
+  EXPECT_EQ_OR_STUCK(OK, send_no_wait(mb2, &SIG4));  /* 18 */
+  EXPECT_EQ_OR_STUCK(1, NUM_OF_MSG(mb2));            /* 19 */
+  EXPECT_EQ_OR_STUCK(2, NUM_OF_MSG(mb1));            /* 20 */
+  int recv2 = 0;                                     /* 21 */
+  EXPECT_EQ_OR_STUCK(OK, receive_wait(mb1, &recv2)); /* 22 */
+  if (recv2 == 2) {                                  /* 29 */
+    nTest2 = 1;
+  }
+  wait(30);                 /* 30 */
+  /* idle() for 10 ticks */ /* 42 */
+  terminate();              /* 43 */
+}
+
+void task4() {
+  int recv_dummy = 0;                                          /* 31 */
+  EXPECT_EQ_OR_STUCK(FAIL, receive_no_wait(mb1, &recv_dummy)); /* 32 */
+  int recv4 = 0;                                               /* 33 */
+  EXPECT_EQ_OR_STUCK(OK, receive_wait(mb2, &recv4));           /* 34 */
+  if (recv4 == 4) {                                            /* 35 */
+    nTest4 = 1;
+  }
+  recv_dummy = 0;                                                       /* 36 */
+  EXPECT_EQ_OR_STUCK(DEADLINE_REACHED, receive_wait(mb1, &recv_dummy)); /* 37 */
+  EXPECT_EQ_OR_STUCK(OK, create_task(task5, 50000));                    /* 44 */
+  EXPECT_EQ_OR_STUCK(OK, create_task(task6, 60000));                    /* 45 */
+  EXPECT_EQ_OR_STUCK(OK, create_task(task7, 70000));                    /* 46 */
+  int SIG_dummy = -1;                                                    /* 47 */
+  /* The following msg will be overwritten */
+  EXPECT_EQ_OR_STUCK(DEADLINE_REACHED, send_wait(mb1, &SIG_dummy)); /* 48 */
+  /* nobody receive msg, idle until deadline reached */             /* 62 */
+  nTest = nTest1 * nTest2 * nTest3 * nTest4 * nTest5 * nTest6;
+  terminate();                                                      /* 63 */
+}
+
+void task5() {
+  int SIG5 = 5;                                  /* 49 */
+  EXPECT_EQ_OR_STUCK(OK, send_wait(mb1, &SIG5)); /* 50 */
+  terminate();                                   /* 55 */
+}
+
+void task6() {
+  int SIG6 = 6;                                  /* 51 */
+  EXPECT_EQ_OR_STUCK(OK, send_wait(mb1, &SIG6)); /* 52 */
+  terminate();                                   /* 59 */
+}
+
+void task7() {
+  int recv5 = 0;                                        /* 53 */
+  EXPECT_EQ_OR_STUCK(OK, receive_no_wait(mb1, &recv5)); /* 54 */
+  if (recv5 == 5) {                                     /* 56 */
+    nTest5 = 1;
+  }
+  int recv6 = 0;                                     /* 57 */
+  EXPECT_EQ_OR_STUCK(OK, receive_wait(mb1, &recv6)); /* 58 */
+  if (recv6 == 6) {                                  /* 60 */
+    nTest6 = 1;
+  }
+  terminate(); /* 61 */
 }
 
 #endif
