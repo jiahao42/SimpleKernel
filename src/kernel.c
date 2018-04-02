@@ -422,6 +422,7 @@ void mailbox_push_wait_msg(mailbox *mBox, msg *m) {
   } else if (mBox->nBlockedMsg == mBox->nMaxMessages) { /* if mailbox is full */
     msg *old_msg = mailbox_pop_wait_msg(mBox);     /* remove the oldest msg */
     old_msg->pBlock->pMessage = NULL;
+    safe_free(old_msg->pData);
     safe_free(old_msg);
     mailbox_push_wait_msg(mBox, m); /* recursive :) */
   } else {
@@ -443,6 +444,7 @@ void mailbox_push_no_wait_msg(mailbox *mBox, msg *m) {
   } else if (mBox->nMessages == mBox->nMaxMessages) { /* if mailbox is full */
     msg *old_msg = mailbox_pop_no_wait_msg(mBox);     /* remove the oldest msg */
     old_msg->pBlock->pMessage = NULL;
+    safe_free(old_msg->pData);
     safe_free(old_msg);
     mailbox_push_no_wait_msg(mBox, m); /* recursive :) */
   } else {
@@ -719,14 +721,16 @@ int init_kernel() {
 
 void idle() {
 #ifdef TEST_MODE
-  // extern mailbox *mb;
+  // extern mailbox *mb1;
+  // extern mailbox *mb2;
   TimerInt();
   Running = list_get_head_task(ready_list);
   if (tick_counter > 100000) {
     destroy_list(ready_list);
     destroy_list(waiting_list);
     destroy_list(timer_list);
-    // remove_mailbox(mb);
+    // remove_mailbox(mb1);
+    // remove_mailbox(mb2);
     while (1);
   }
   LoadContext();

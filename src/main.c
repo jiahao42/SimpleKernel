@@ -151,7 +151,7 @@ int main() {
 }
 
 void task1(void) {
-  int data2;                                                          /* 8/23 */
+  int data2; /* 8/23 */
   /* Finally, it will stop here */
   EXPECT_NOT_EQ_OR_STUCK(DEADLINE_REACHED, receive_wait(mb, &data2)); /* 9/24 */
   if (data2 == TEST_PATTERN_1) { /* 13/25 */
@@ -195,7 +195,8 @@ void task6();
 void task7();
 mailbox *mb1;
 mailbox *mb2;
-int nTest = 0, nTest1 = 0, nTest2 = 0, nTest3 = 0, nTest4 = 0, nTest5 = 0, nTest6 = 0;
+int nTest = 0, nTest1 = 0, nTest2 = 0, nTest3 = 0, nTest4 = 0, nTest5 = 0,
+    nTest6 = 0, nTest7 = 0, nTest8 = 0;
 int main() {
   EXPECT_EQ_OR_STUCK(OK, init_kernel());                              /* 1 */
   EXPECT_EQ_OR_STUCK(OK, create_task(task1, 10000));                  /* 2 */
@@ -268,12 +269,12 @@ void task4() {
   EXPECT_EQ_OR_STUCK(OK, create_task(task5, 50000));                    /* 44 */
   EXPECT_EQ_OR_STUCK(OK, create_task(task6, 60000));                    /* 45 */
   EXPECT_EQ_OR_STUCK(OK, create_task(task7, 70000));                    /* 46 */
-  int SIG_dummy = -1;                                                    /* 47 */
+  int SIG_dummy = -1;                                                   /* 47 */
   /* The following msg will be overwritten */
   EXPECT_EQ_OR_STUCK(DEADLINE_REACHED, send_wait(mb1, &SIG_dummy)); /* 48 */
-  /* nobody receive msg, idle until deadline reached */             /* 62 */
-  nTest = nTest1 * nTest2 * nTest3 * nTest4 * nTest5 * nTest6;
-  terminate();                                                      /* 63 */
+  /* nobody receive msg, idle until deadline reached */             /* 73 */
+  nTest = nTest1 * nTest2 * nTest3 * nTest4 * nTest5 * nTest6 * nTest7 * nTest8;
+  terminate(); /* 74 */
 }
 
 void task5() {
@@ -299,7 +300,30 @@ void task7() {
   if (recv6 == 6) {                                  /* 60 */
     nTest6 = 1;
   }
-  terminate(); /* 61 */
+  /* Test msg overwritten in send_no_wait */
+  EXPECT_EQ_OR_STUCK(0, NUM_OF_MSG(mb1)); /* 61 */
+  /* This following msg will be overwritten */
+  int SIG_dummy = 0;
+  EXPECT_EQ_OR_STUCK(OK, send_no_wait(mb1, &SIG_dummy)); /* 62 */
+  EXPECT_EQ_OR_STUCK(1, NUM_OF_MSG(mb1));                /* 63 */
+  int SIG_7 = 7;
+  EXPECT_EQ_OR_STUCK(OK, send_no_wait(mb1, &SIG_7)); /* 64 */
+  EXPECT_EQ_OR_STUCK(2, NUM_OF_MSG(mb1));            /* 65 */
+  int SIG_8 = 8;
+  EXPECT_EQ_OR_STUCK(OK, send_no_wait(mb1, &SIG_8)); /* 66 */
+  EXPECT_EQ_OR_STUCK(2, NUM_OF_MSG(mb1));            /* 67 */
+  int recv7 = 0;
+  EXPECT_EQ_OR_STUCK(OK, receive_no_wait(mb1, &recv7)); /* 68 */
+  if (recv7 == 7) {                                     /* 69 */
+    nTest7 = 1;
+  }
+  int recv8 = 0;
+  EXPECT_EQ_OR_STUCK(OK, receive_wait(mb1, &recv8)); /* 70 */
+  if (recv8 == 8) {                                  /* 71 */
+    nTest8 = 1;
+  }
+
+  terminate(); /* 72 */
 }
 
 #endif
