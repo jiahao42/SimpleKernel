@@ -5,7 +5,7 @@
 There are 4 tests to check if the kernel works as predicted,
 choose the test by define the macro
 */
-#define TEST_INDEX 4
+#define TEST_INDEX 5
 #define TEST_PATTERN_1 0xAA
 #define TEST_PATTERN_2 0x55
 
@@ -144,8 +144,8 @@ void task2();
 int nTest1 = 0, nTest2 = 0;
 int main() {
   EXPECT_EQ_OR_STUCK(OK, init_kernel());                             /* 1 */
-  EXPECT_EQ_OR_STUCK(OK, create_task(task1, 200));                   /* 2 */
-  EXPECT_EQ_OR_STUCK(OK, create_task(task2, 150));                   /* 3 */
+  EXPECT_EQ_OR_STUCK(OK, create_task(task1, 2000));                   /* 2 */
+  EXPECT_EQ_OR_STUCK(OK, create_task(task2, 1500));                   /* 3 */
   EXPECT_NOT_EQ_OR_STUCK(NULL, mb = create_mailbox(1, sizeof(int))); /* 4 */
   run();                                                             /* 5 */
 }
@@ -199,10 +199,10 @@ int nTest = 0, nTest1 = 0, nTest2 = 0, nTest3 = 0, nTest4 = 0, nTest5 = 0,
     nTest6 = 0, nTest7 = 0, nTest8 = 0;
 int main() {
   EXPECT_EQ_OR_STUCK(OK, init_kernel());                              /* 1 */
-  EXPECT_EQ_OR_STUCK(OK, create_task(task1, 10000));                  /* 2 */
-  EXPECT_EQ_OR_STUCK(OK, create_task(task2, 20000));                  /* 2 */
-  EXPECT_EQ_OR_STUCK(OK, create_task(task3, 30000));                  /* 2 */
-  EXPECT_EQ_OR_STUCK(OK, create_task(task4, 40000));                  /* 2 */
+  EXPECT_EQ_OR_STUCK(OK, create_task(task1, ticks() + 10000));        /* 2 */
+  EXPECT_EQ_OR_STUCK(OK, create_task(task2, ticks() + 20000));        /* 2 */
+  EXPECT_EQ_OR_STUCK(OK, create_task(task3, ticks() + 30000));        /* 2 */
+  EXPECT_EQ_OR_STUCK(OK, create_task(task4, ticks() + 40000));        /* 2 */
   EXPECT_NOT_EQ_OR_STUCK(NULL, mb1 = create_mailbox(2, sizeof(int))); /* 3 */
   EXPECT_NOT_EQ_OR_STUCK(NULL, mb2 = create_mailbox(2, sizeof(int))); /* 4 */
   run();                                                              /* 5 */
@@ -266,9 +266,9 @@ void task4() {
   }
   recv_dummy = 0;                                                       /* 36 */
   EXPECT_EQ_OR_STUCK(DEADLINE_REACHED, receive_wait(mb1, &recv_dummy)); /* 37 */
-  EXPECT_EQ_OR_STUCK(OK, create_task(task5, 50000));                    /* 44 */
-  EXPECT_EQ_OR_STUCK(OK, create_task(task6, 60000));                    /* 45 */
-  EXPECT_EQ_OR_STUCK(OK, create_task(task7, 70000));                    /* 46 */
+  EXPECT_EQ_OR_STUCK(OK, create_task(task5, ticks() + 50000));          /* 44 */
+  EXPECT_EQ_OR_STUCK(OK, create_task(task6, ticks() + 60000));          /* 45 */
+  EXPECT_EQ_OR_STUCK(OK, create_task(task7, ticks() + 70000));          /* 46 */
   int SIG_dummy = -1;                                                   /* 47 */
   /* The following msg will be overwritten */
   EXPECT_EQ_OR_STUCK(DEADLINE_REACHED, send_wait(mb1, &SIG_dummy)); /* 48 */
@@ -324,6 +324,26 @@ void task7() {
   }
 
   terminate(); /* 72 */
+}
+
+#endif
+
+#if TEST_INDEX == 5
+mailbox *mb1;
+void task1();
+int main() {
+  EXPECT_EQ_OR_STUCK(OK, init_kernel());                              /* 1 */
+  EXPECT_EQ_OR_STUCK(OK, create_task(task1, ticks() + 10000));        /* 2 */
+  EXPECT_NOT_EQ_OR_STUCK(NULL, mb1 = create_mailbox(2, sizeof(int))); /* 3 */
+  run();  
+}
+
+void task1() {
+  int dummy = 0;
+  send_no_wait(mb1, &dummy);
+  send_no_wait(mb1, &dummy);
+  send_no_wait(mb1, &dummy);
+  terminate();
 }
 
 #endif
